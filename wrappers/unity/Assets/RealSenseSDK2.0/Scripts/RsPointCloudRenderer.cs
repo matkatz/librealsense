@@ -10,6 +10,24 @@ using System.Collections.Generic;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class RsPointCloudRenderer : MonoBehaviour
 {
+    public RsDevice _realSenseDevice;
+    public RsDevice RealSenseDevice
+    {
+        get
+        {
+            if (_realSenseDevice == null)
+            {
+                _realSenseDevice = FindObjectOfType<RsDevice>();
+            }
+            UnityEngine.Assertions.Assert.IsNotNull(_realSenseDevice);
+            return _realSenseDevice;
+        }
+        set
+        {
+            _realSenseDevice = value;
+        }
+    }
+
     private Mesh mesh;
     private Texture2D uvmap;
 
@@ -28,8 +46,8 @@ public class RsPointCloudRenderer : MonoBehaviour
     {
         _videoStreamFilter = new RsVideoStreamRequest();
         _currVideoStreamFilter = _videoStreamFilter.Clone();
-        RsDevice.Instance.OnNewSampleSet += OnFrames;
-        RsDevice.Instance.OnStop += Dispose;
+        RealSenseDevice.OnNewSampleSet += OnFrames;
+        RealSenseDevice.OnStop += Dispose;
     }
 
     private void ResetMesh(RsVideoStreamRequest vsr)

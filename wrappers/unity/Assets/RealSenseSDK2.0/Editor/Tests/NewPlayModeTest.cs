@@ -15,9 +15,8 @@ public class NewPlayModeTest
     {
         var go = new GameObject("RealSenseDevice", typeof(RsDevice));
         Assert.NotNull(go);
-        Assert.NotNull(go.GetComponent<RsDevice>());
 
-        var rs = RsDevice.Instance;
+        var rs = go.GetComponent<RsDevice>();
         Assert.NotNull(rs);
 
         bool started = false;
@@ -39,14 +38,14 @@ public class NewPlayModeTest
         GameObject.Destroy(go);
         yield return null;
         Assert.That(go == null);
-        Assert.IsNull(RsDevice.Instance);
     }
 
     [UnityTest]
     [Category("Live")]
     public IEnumerator TestLiveDepthTexture()
     {
-        var go = new GameObject("RealSenseDevice", typeof(RsDevice));
+        var go = new GameObject("RsDevice", typeof(RsDevice));
+        var rs = go.GetComponent<RsDevice>();
 
         var depth_go = new GameObject("Depth");
         var depth = depth_go.AddComponent<RsStreamTextureRenderer>();
@@ -60,10 +59,10 @@ public class NewPlayModeTest
         Texture depth_tex = null;
         depth.textureBinding.AddListener(t => depth_tex = t);
 
-        yield return new WaitUntil(() => RsDevice.Instance.Streaming);
+        yield return new WaitUntil(() => rs.Streaming);
         Assert.IsNotNull(depth_tex);
 
-        using (var depth_profile = RsDevice.Instance.ActiveProfile.GetStream(Stream.Depth) as VideoStreamProfile)
+        using (var depth_profile = rs.ActiveProfile.GetStream(Stream.Depth) as VideoStreamProfile)
         {
             Assert.AreEqual(depth_tex.width, depth_profile.Width);
             Assert.AreEqual(depth_tex.height, depth_profile.Height);
@@ -78,8 +77,8 @@ public class NewPlayModeTest
     [Category("Live")]
     public IEnumerator TestDisabledNoStart()
     {
-        var go = new GameObject("RealSenseDevice", typeof(RsDevice));
-        var rs = RsDevice.Instance;
+        var go = new GameObject("RsDevice", typeof(RsDevice));
+        var rs = go.GetComponent<RsDevice>();
 
         rs.OnStop += Assert.Fail;
         rs.OnStart += delegate
@@ -92,15 +91,14 @@ public class NewPlayModeTest
         GameObject.Destroy(go);
         yield return null;
         Assert.That(go == null);
-        Assert.IsNull(RsDevice.Instance);
     }
 
     [UnityTest]
     [Category("Live")]
     public IEnumerator TestDisableStop()
     {
-        var go = new GameObject("RealSenseDevice", typeof(RsDevice));
-        var rs = RsDevice.Instance;
+        var go = new GameObject("RsDevice", typeof(RsDevice));
+        var rs = go.GetComponent<RsDevice>();
 
         bool started = false;
         rs.OnStart += delegate
@@ -129,8 +127,8 @@ public class NewPlayModeTest
     [Category("Live")]
     public void TestExtrinsics()
     {
-        var go = new GameObject("RealSenseDevice", typeof(RsDevice));
-        var rs = RsDevice.Instance;
+        var go = new GameObject("RsDevice", typeof(RsDevice));
+        var rs = go.GetComponent<RsDevice>();
 
         var depth = rs.ActiveProfile.GetStream(Stream.Depth);
         Assert.IsNotNull(depth);
@@ -149,8 +147,8 @@ public class NewPlayModeTest
     [Category("Live"), Category("Record")]
     public IEnumerator TestRecord()
     {
-        var go = new GameObject("RealSenseDevice", typeof(RsDevice));
-        var rs = RsDevice.Instance;
+        var go = new GameObject("RsDevice", typeof(RsDevice));
+        var rs = go.GetComponent<RsDevice>();
 
         go.SetActive(false);
 

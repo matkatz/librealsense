@@ -8,6 +8,25 @@ using UnityEngine.XR;
 
 public class RsARBackgroundRenderer : MonoBehaviour
 {
+    [SerializeField]
+    private RsDevice _realSenseDevice;
+    public RsDevice realSenseDevice
+    {
+        get
+        {
+            if (_realSenseDevice == null)
+            {
+                _realSenseDevice = FindObjectOfType<RsDevice>();
+            }
+            UnityEngine.Assertions.Assert.IsNotNull(_realSenseDevice);
+            return _realSenseDevice;
+        }
+        set
+        {
+            _realSenseDevice = value;
+        }
+    }
+
     public Material material;
     private Camera cam;
     private ARBackgroundRenderer bg;
@@ -18,9 +37,9 @@ public class RsARBackgroundRenderer : MonoBehaviour
 
     IEnumerator Start()
     {
-        yield return new WaitUntil(() => RsDevice.Instance.Streaming);
+        yield return new WaitUntil(() => realSenseDevice.Streaming);
 
-        using (var profile = RsDevice.Instance.ActiveProfile.GetStream(Stream.Color) as VideoStreamProfile)
+        using (var profile = realSenseDevice.ActiveProfile.GetStream(Stream.Color) as VideoStreamProfile)
         {
             intrinsics = profile.GetIntrinsics();
         }

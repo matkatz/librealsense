@@ -13,6 +13,25 @@ public class RsDeviceInspector : MonoBehaviour
     public readonly Dictionary<string, Sensor> sensors = new Dictionary<string, Sensor>();
     public readonly Dictionary<string, List<Sensor.CameraOption>> sensorOptions = new Dictionary<string, List<Sensor.CameraOption>>();
 
+    [SerializeField]
+    private RsDevice _realSenseDevice;
+    public RsDevice RealSenseDevice
+    {
+        get
+        {
+            if (_realSenseDevice == null)
+            {
+                _realSenseDevice = FindObjectOfType<RsDevice>();
+            }
+            UnityEngine.Assertions.Assert.IsNotNull(_realSenseDevice);
+            return _realSenseDevice;
+        }
+        set
+        {
+            _realSenseDevice = value;
+        }
+    }
+
     void Awake()
     {
         StartCoroutine(WaitForDevice());
@@ -20,12 +39,12 @@ public class RsDeviceInspector : MonoBehaviour
 
     private IEnumerator WaitForDevice()
     {
-        yield return new WaitUntil(() => RsDevice.Instance != null);
-        RsDevice.Instance.OnStart += onStartStreaming;
-        RsDevice.Instance.OnStop += onStopStreaming;
+        yield return new WaitUntil(() => RealSenseDevice != null);
+        RealSenseDevice.OnStart += onStartStreaming;
+        RealSenseDevice.OnStop += onStopStreaming;
 
-        if(RsDevice.Instance.Streaming)
-            onStartStreaming(RsDevice.Instance.ActiveProfile);
+        if(RealSenseDevice.Streaming)
+            onStartStreaming(RealSenseDevice.ActiveProfile);
     }
 
     private void onStopStreaming()

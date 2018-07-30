@@ -23,8 +23,6 @@ public class RsDevice : MonoBehaviour
         UnityThread,
     }
 
-    public static RsDevice Instance { get; private set; }
-
     /// <summary>
     /// Threading mode of operation, Multithreasds or Unitythread
     /// </summary>
@@ -79,11 +77,20 @@ public class RsDevice : MonoBehaviour
 
     public RsProcessingPipe _processingPipe;
 
-    void Awake()
+    private CustomProcessingBlock _block;
+
+    private void Awake()
     {
-        if (Instance != null && Instance != this)
-            throw new Exception(string.Format("{0} singleton already instanced", this.GetType()));
-        Instance = this;
+        _block = new CustomProcessingBlock(FrameProcessorCallback);
+    }
+
+    private void FrameProcessorCallback(Frame frame, FrameSource source)
+    {
+        using (var releaser = new FramesReleaser())
+        {
+            var frames = FrameSet.FromFrame(frame, releaser);
+            _processingPipe.ProcessFrames(frames, source, releaser, HandleFrame, HandleFrameSet);
+        }
     }
 
     void OnEnable()
@@ -177,8 +184,6 @@ public class RsDevice : MonoBehaviour
         if (m_pipeline != null)
             m_pipeline.Release();
         m_pipeline = null;
-
-        Instance = null;
     }
 
     /// <summary>
@@ -249,13 +254,4 @@ public class RsDevice : MonoBehaviour
             }
         }
     }
-
-    private CustomProcessingBlock _block = new CustomProcessingBlock((f1, src) =>
-    {
-        using (var releaser = new FramesReleaser())
-        {
-            var frames = FrameSet.FromFrame(f1, releaser);
-            Instance._processingPipe.ProcessFrames(frames, src, releaser, Instance.HandleFrame, Instance.HandleFrameSet);
-        }
-    });
 }
