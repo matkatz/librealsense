@@ -28,6 +28,7 @@ public class RsPointCloudRenderer : MonoBehaviour
         }
     }
 
+    public RsStreamTextureRenderer _textureRenderer;
     private Mesh mesh;
     private Texture2D uvmap;
 
@@ -177,6 +178,12 @@ public class RsPointCloudRenderer : MonoBehaviour
 
             mesh.vertices = vertices;
             mesh.UploadMeshData(false);
+
+            if(_textureRenderer != null)
+            {
+                var mr = GetComponent<MeshRenderer>();
+                mr.material.mainTexture = _textureRenderer.Texture;
+            }
         }
     }
     

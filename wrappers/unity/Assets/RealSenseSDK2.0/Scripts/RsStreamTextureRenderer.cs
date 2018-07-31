@@ -66,7 +66,7 @@ public class RsStreamTextureRenderer : MonoBehaviour
     private RsVideoStreamRequest _videoStreamFilter;
     private RsVideoStreamRequest _currVideoStreamFilter;
 
-    protected Texture2D texture;
+    public Texture2D Texture { get; protected set; }
 
     [Space]
     public TextureEvent textureBinding;
@@ -93,9 +93,9 @@ public class RsStreamTextureRenderer : MonoBehaviour
 
     void OnDestroy()
     {
-        if (texture != null) {
-            Destroy(texture);
-            texture = null;
+        if (Texture != null) {
+            Destroy(Texture);
+            Texture = null;
         }
     }
 
@@ -144,12 +144,12 @@ public class RsStreamTextureRenderer : MonoBehaviour
 
     private void ResetTexture(RsVideoStreamRequest vsr)
     {
-        if (texture != null)
+        if (Texture != null)
         {
-            Destroy(texture);
+            Destroy(Texture);
         }
 
-        texture = new Texture2D(vsr.Width, vsr.Height, Convert(vsr.Format), false, true)
+        Texture = new Texture2D(vsr.Width, vsr.Height, Convert(vsr.Format), false, true)
         {
             wrapMode = TextureWrapMode.Clamp,
             filterMode = filterMode
@@ -157,8 +157,8 @@ public class RsStreamTextureRenderer : MonoBehaviour
 
         _currVideoStreamFilter = vsr.Clone();
 
-        texture.Apply();
-        textureBinding.Invoke(texture);
+        Texture.Apply();
+        textureBinding.Invoke(Texture);
     }
 
     private bool HasTextureConflict(Frame frame)
@@ -204,7 +204,7 @@ public class RsStreamTextureRenderer : MonoBehaviour
 
         UnityEngine.Assertions.Assert.AreEqual(threadId, Thread.CurrentThread.ManagedThreadId);
 
-        texture.LoadRawTextureData(vidFrame.Data, vidFrame.Stride * vidFrame.Height);
+        Texture.LoadRawTextureData(vidFrame.Data, vidFrame.Stride * vidFrame.Height);
 
         if ((vidFrame as Frame) != frame)
             vidFrame.Dispose();
@@ -224,7 +224,7 @@ public class RsStreamTextureRenderer : MonoBehaviour
             try
             {
                 if (data != null)
-                    texture.LoadRawTextureData(data);
+                    Texture.LoadRawTextureData(data);
             }
             catch
             {
@@ -232,11 +232,11 @@ public class RsStreamTextureRenderer : MonoBehaviour
                 Debug.LogError("Error loading texture data, check texture and stream formats");
                 throw;
             }
-            texture.Apply();
+            Texture.Apply();
 
             if (!bound)
             {
-                textureBinding.Invoke(texture);
+                textureBinding.Invoke(Texture);
                 bound = true;
             }
         }
