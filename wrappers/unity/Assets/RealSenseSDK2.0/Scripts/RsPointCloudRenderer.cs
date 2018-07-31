@@ -40,6 +40,7 @@ public class RsPointCloudRenderer : MonoBehaviour
     private IntPtr verticesPtr;
     private int frameSize;
     private IntPtr frameData;
+    private MeshRenderer _meshRenderer;
 
     private readonly AutoResetEvent e = new AutoResetEvent(false);
 
@@ -49,6 +50,7 @@ public class RsPointCloudRenderer : MonoBehaviour
         _currVideoStreamFilter = _videoStreamFilter.Clone();
         RealSenseDevice.OnNewSampleSet += OnFrames;
         RealSenseDevice.OnStop += Dispose;
+        _meshRenderer = GetComponent<MeshRenderer>();
     }
 
     private void ResetMesh(RsVideoStreamRequest vsr)
@@ -173,17 +175,16 @@ public class RsPointCloudRenderer : MonoBehaviour
 
         if (e.WaitOne(0))
         {
+            if (_textureRenderer != null)
+            {
+                _meshRenderer.material.mainTexture = _textureRenderer.Texture;
+            }
+
             uvmap.LoadRawTextureData(frameData, frameSize);
             uvmap.Apply();
 
             mesh.vertices = vertices;
             mesh.UploadMeshData(false);
-
-            if(_textureRenderer != null)
-            {
-                var mr = GetComponent<MeshRenderer>();
-                mr.material.mainTexture = _textureRenderer.Texture;
-            }
         }
     }
     
