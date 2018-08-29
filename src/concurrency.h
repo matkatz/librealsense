@@ -31,6 +31,17 @@ public:
         : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true)
     {}
 
+    void blocking_enqueue(T&& item)
+    {
+        auto pred = [this]()->bool { return q.size() <= cap; };
+
+        std::unique_lock<std::mutex> lock(mutex);
+        cv.wait(lock, pred);
+        q.push_back(std::move(item));
+        lock.unlock();
+        cv.notify_one();
+    }
+
     void enqueue(T&& item)
     {
         std::unique_lock<std::mutex> lock(mutex);
@@ -46,7 +57,7 @@ public:
         cv.notify_one();
     }
 
-    bool dequeue(T* item ,unsigned int timeout_ms = 5000)
+    bool dequeue(T* item, unsigned int timeout_ms = 5000)
     {
         std::unique_lock<std::mutex> lock(mutex);
         accepting = true;
@@ -63,6 +74,7 @@ public:
         }
         *item = std::move(q.front());
         q.pop_front();
+        cv.notify_one();
         return true;
     }
 
@@ -87,6 +99,7 @@ public:
             auto val = std::move(q.front());
             q.pop_front();
             *item = std::move(val);
+            cv.notify_one();
             return true;
         }
         return false;
@@ -105,6 +118,13 @@ public:
             q.pop_front();
         }
         cv.notify_all();
+    }
+
+    void remove_all()
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+
+        q.clear();
     }
 
     void start()
@@ -145,11 +165,12 @@ public:
         dispatcher* _owner;
     };
 
-    dispatcher(unsigned int cap)
-        : _queue(cap),
-          _was_stopped(true),
-          _was_flushed(false),
-          _is_alive(true)
+    dispatcher(unsigned int cap) :
+        _queue(cap),
+        _was_stopped(true),
+        _was_flushed(false),
+        _is_alive(true),
+        _block_enqueue(false)
     {
         _thread = std::thread([&]()
         {
@@ -165,7 +186,7 @@ public:
                     {
                         item(time);
                     }
-                    catch(...){}
+                    catch (...) {}
                 }
 
 #ifndef ANDROID
@@ -185,7 +206,10 @@ public:
     {
         if (!_was_stopped)
         {
-            _queue.enqueue(std::move(item));
+            if (_block_enqueue)
+                _queue.blocking_enqueue(std::move(item));
+            else
+                _queue.enqueue(std::move(item));
         }
     }
 
@@ -226,6 +250,11 @@ public:
         _thread.join();
     }
 
+    void clear()
+    {
+        _queue.remove_all();
+    }
+
     bool flush()
     {
         std::mutex m;
@@ -248,6 +277,12 @@ public:
         *wait_sucess = cv.wait_for(locker, std::chrono::seconds(10), [&]() { return invoked || _was_stopped; });
         return *wait_sucess;
     }
+
+    void set_blocking(bool is_blocking)
+    {
+        _block_enqueue = is_blocking;
+    }
+
 private:
     friend cancellable_timer;
     single_consumer_queue<std::function<void(cancellable_timer)>> _queue;
@@ -262,6 +297,7 @@ private:
     std::mutex _was_flushed_mutex;
 
     std::atomic<bool> _is_alive;
+    std::atomic<bool> _block_enqueue;
 };
 
 template<class T = std::function<void(dispatcher::cancellable_timer)>>

@@ -29,7 +29,8 @@ playback_sensor::playback_sensor(const device_interface& parent_device, const de
     m_is_started(false),
     m_sensor_description(sensor_description),
     m_sensor_id(sensor_description.get_sensor_index()),
-    m_parent_device(parent_device)
+    m_parent_device(parent_device),
+    _default_queue_size(10)//TODO: what size the queue should be?
 {
     register_sensor_streams(m_sensor_description.get_stream_profiles());
     register_sensor_infos(m_sensor_description);
@@ -74,7 +75,7 @@ void playback_sensor::open(const stream_profiles& requests)
     //For each stream, create a dedicated dispatching thread
     for (auto&& profile : requests)
     {
-        m_dispatchers.emplace(std::make_pair(profile->get_unique_id(), std::make_shared<dispatcher>(10))); //TODO: what size the queue should be?
+        m_dispatchers.emplace(std::make_pair(profile->get_unique_id(), std::make_shared<dispatcher>(_default_queue_size)));
         m_dispatchers[profile->get_unique_id()]->start();
         device_serializer::stream_identifier f{ get_device_index(), m_sensor_id, profile->get_stream_type(), static_cast<uint32_t>(profile->get_stream_index()) };
         opened_streams.push_back(f);
@@ -176,16 +177,17 @@ void playback_sensor::handle_frame(frame_holder frame, bool is_real_time)
         auto stream_id = frame.frame->get_stream()->get_unique_id();
         //TODO: Ziv, remove usage of shared_ptr when frame_holder is cpoyable
         auto pf = std::make_shared<frame_holder>(std::move(frame));
+        m_dispatchers.at(stream_id)->set_blocking(!is_real_time);
+        if (is_real_time)
+        {
+            m_dispatchers.at(stream_id)->clear();
+        }
         m_dispatchers.at(stream_id)->invoke([this, pf](dispatcher::cancellable_timer t)
         {
             frame_interface* pframe = nullptr;
             std::swap((*pf).frame, pframe);
             m_user_callback->on_frame((rs2_frame*)pframe);
         });
-        if(is_real_time)
-        {
-            m_dispatchers.at(stream_id)->flush();
-        }
     }
 }
 void playback_sensor::update_option(rs2_option id, std::shared_ptr<option> option)

@@ -67,5 +67,6 @@ namespace librealsense
         const device_interface& m_parent_device;
         stream_profiles m_available_profiles;
         stream_profiles m_active_streams;
+        const unsigned int _default_queue_size;
     };
 }
