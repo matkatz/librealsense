@@ -123,7 +123,6 @@ public:
     void remove_all()
     {
         std::unique_lock<std::mutex> lock(mutex);
-
         q.clear();
     }
 

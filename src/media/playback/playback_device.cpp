@@ -356,6 +356,8 @@ void playback_device::update_time_base(device_serializer::nanoseconds base_times
 
 device_serializer::nanoseconds playback_device::calc_sleep_time(device_serializer::nanoseconds timestamp) const
 {
+    if (!m_real_time)
+        return device_serializer::nanoseconds(0);
     //The time to sleep returned here equals to the difference between the file recording time
     // and the playback time.
     auto now = std::chrono::high_resolution_clock::now();
@@ -524,7 +526,7 @@ void playback_device::try_looping()
         {
             if (m_sample_rate > 0)
             {
-                LOG_DEBUG("Sleeping for: " << (sleep_time.count() / 1000) / 1000);
+                LOG_DEBUG("Sleeping for: " << (sleep_time.count() / 1e6));
                 std::this_thread::sleep_for(sleep_time);
             }
         }
