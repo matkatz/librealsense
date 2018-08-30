@@ -99,8 +99,8 @@ struct rs2_pipeline_profile
 
 struct rs2_frame_queue
 {
-    explicit rs2_frame_queue(int cap)
-        : queue(cap)
+    explicit rs2_frame_queue(int cap, bool blocking)
+        : queue(cap, blocking)
     {
     }
 
@@ -879,9 +879,17 @@ HANDLE_EXCEPTIONS_AND_RETURN(nullptr, options, option, value)
 
 rs2_frame_queue* rs2_create_frame_queue(int capacity, rs2_error** error) BEGIN_API_CALL
 {
-    return new rs2_frame_queue(capacity);
+    return new rs2_frame_queue(capacity, false);
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, capacity)
+
+void rs2_set_frame_queue_blocking_enqueue(rs2_frame_queue* queue, unsigned char state, rs2_error** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(queue);
+
+    queue->queue.set_blocking(state);
+}
+HANDLE_EXCEPTIONS_AND_RETURN(, queue, state)
 
 void rs2_delete_frame_queue(rs2_frame_queue* queue) BEGIN_API_CALL
 {
