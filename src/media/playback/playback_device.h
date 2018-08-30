@@ -69,6 +69,7 @@ namespace librealsense
         void register_device_info(const device_serializer::device_snapshot& device_description);
         void register_extrinsics(const device_serializer::device_snapshot& device_description);
         void update_extensions(const device_serializer::device_snapshot& device_description);
+        bool prefetch_done();
 
     private:
         lazy<std::shared_ptr<dispatcher>> m_read_thread;

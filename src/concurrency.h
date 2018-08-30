@@ -19,6 +19,7 @@ class single_consumer_queue
     std::condition_variable cv; // not empty signal
     unsigned int cap;
     bool accepting;
+    bool _blocking;
 
     // flush mechanism is required to abort wait on cv
     // when need to stop
@@ -27,34 +28,16 @@ class single_consumer_queue
     std::condition_variable was_flushed_cv;
     std::mutex was_flushed_mutex;
 public:
-    explicit single_consumer_queue<T>(unsigned int cap = QUEUE_MAX_SIZE)
-        : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true)
+    explicit single_consumer_queue<T>(unsigned int cap = QUEUE_MAX_SIZE, bool blocking = false)
+        : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true), _blocking(blocking)
     {}
-
-    void blocking_enqueue(T&& item)
-    {
-        auto pred = [this]()->bool { return q.size() <= cap; };
-
-        std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, pred);
-        q.push_back(std::move(item));
-        lock.unlock();
-        cv.notify_one();
-    }
 
     void enqueue(T&& item)
     {
-        std::unique_lock<std::mutex> lock(mutex);
-        if (accepting)
-        {
-            q.push_back(std::move(item));
-            if (q.size() > cap)
-            {
-                q.pop_front();
-            }
-        }
-        lock.unlock();
-        cv.notify_one();
+        if (_blocking)
+            blocking_enqueue(std::move(item));
+        else
+            non_blocking_enqueue(std::move(item));
     }
 
     bool dequeue(T* item, unsigned int timeout_ms = 5000)
@@ -120,12 +103,6 @@ public:
         cv.notify_all();
     }
 
-    void remove_all()
-    {
-        std::unique_lock<std::mutex> lock(mutex);
-        q.clear();
-    }
-
     void start()
     {
         std::unique_lock<std::mutex> lock(mutex);
@@ -137,6 +114,38 @@ public:
     {
         std::unique_lock<std::mutex> lock(mutex);
         return q.size();
+    }
+
+    void set_blocking(bool is_blocking)
+    {
+        _blocking = is_blocking;
+    }
+
+private:
+    void blocking_enqueue(T&& item)
+    {
+        auto pred = [this]()->bool { return q.size() <= cap; };
+
+        std::unique_lock<std::mutex> lock(mutex);
+        cv.wait(lock, pred);
+        q.push_back(std::move(item));
+        lock.unlock();
+        cv.notify_one();
+    }
+
+    void non_blocking_enqueue(T&& item)
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        if (accepting)
+        {
+            q.push_back(std::move(item));
+            if (q.size() > cap)
+            {
+                q.pop_front();
+            }
+        }
+        lock.unlock();
+        cv.notify_one();
     }
 };
 
@@ -165,7 +174,7 @@ public:
     };
 
     dispatcher(unsigned int cap) :
-        _queue(cap),
+        _queue(cap, false),
         _was_stopped(true),
         _was_flushed(false),
         _is_alive(true),
@@ -205,10 +214,7 @@ public:
     {
         if (!_was_stopped)
         {
-            if (_block_enqueue)
-                _queue.blocking_enqueue(std::move(item));
-            else
-                _queue.enqueue(std::move(item));
+            _queue.enqueue(std::move(item));
         }
     }
 
@@ -249,11 +255,6 @@ public:
         _thread.join();
     }
 
-    void clear()
-    {
-        _queue.remove_all();
-    }
-
     bool flush()
     {
         std::mutex m;
@@ -279,7 +280,12 @@ public:
 
     void set_blocking(bool is_blocking)
     {
-        _block_enqueue = is_blocking;
+        _queue.set_blocking(is_blocking);
+    }
+
+    bool empty()
+    {
+        return _queue.size() == 0;
     }
 
 private:
