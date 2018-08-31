@@ -135,17 +135,10 @@ namespace rs2
         */
         void enqueue(frame f) const
         {
-            rs2_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
-            f.frame_ref = nullptr; // frame has been essentially moved from
-        }
-
-        /**
-        * enqueue new frame into a queue, this call is blocking untill the queue can accept the frame
-        * \param[in] f - frame handle to enqueue (this operation passed ownership to the queue)
-        */
-        void blocking_enqueue(frame f) const
-        {
-            rs2_blocking_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
+            if (_blocking)
+                rs2_blocking_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
+            else
+                rs2_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
             f.frame_ref = nullptr; // frame has been essentially moved from
         }
 
@@ -194,10 +187,7 @@ namespace rs2
         */
         void operator()(frame f) const
         {
-            if(_blocking)
-                blocking_enqueue(std::move(f));
-            else
-                enqueue(std::move(f));
+            enqueue(std::move(f));
         }
         /**
         * return the capacity of the queue
