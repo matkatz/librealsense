@@ -119,12 +119,10 @@ namespace rs2
         * to help developers who are not using async APIs
         * param[in] capacity size of the frame queue
         */
-        explicit frame_queue(unsigned int capacity, bool blocking = false) : _capacity(capacity)
+        explicit frame_queue(unsigned int capacity, bool blocking = false) : _capacity(capacity), _blocking(blocking)
         {
             rs2_error* e = nullptr;
             auto q = rs2_create_frame_queue(capacity, &e);
-            error::handle(e);
-            rs2_set_frame_queue_blocking_enqueue(q, blocking, &e);
             error::handle(e);
             _queue = std::shared_ptr<rs2_frame_queue>(q, rs2_delete_frame_queue);
         }
@@ -138,6 +136,16 @@ namespace rs2
         void enqueue(frame f) const
         {
             rs2_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
+            f.frame_ref = nullptr; // frame has been essentially moved from
+        }
+
+        /**
+        * enqueue new frame into a queue, this call is blocking untill the queue can accept the frame
+        * \param[in] f - frame handle to enqueue (this operation passed ownership to the queue)
+        */
+        void blocking_enqueue(frame f) const
+        {
+            rs2_blocking_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
             f.frame_ref = nullptr; // frame has been essentially moved from
         }
 
@@ -186,7 +194,10 @@ namespace rs2
         */
         void operator()(frame f) const
         {
-            enqueue(std::move(f));
+            if(_blocking)
+                blocking_enqueue(std::move(f));
+            else
+                enqueue(std::move(f));
         }
         /**
         * return the capacity of the queue
@@ -197,6 +208,7 @@ namespace rs2
     private:
         std::shared_ptr<rs2_frame_queue> _queue;
         size_t _capacity;
+        bool _blocking;
     };
 
     /**

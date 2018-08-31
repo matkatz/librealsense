@@ -86,7 +86,6 @@ namespace librealsense
                 auto stream_id = frame.frame->get_stream()->get_unique_id();
                 //TODO: Ziv, remove usage of shared_ptr when frame_holder is cpoyable
                 auto pf = std::make_shared<frame_holder>(std::move(frame));
-                m_dispatchers.at(stream_id)->set_blocking(!is_real_time);
                 m_dispatchers.at(stream_id)->invoke([this, pf, calc_sleep](dispatcher::cancellable_timer t)
                 {
                     auto sleep_for = calc_sleep() * 1e-6;
@@ -95,9 +94,8 @@ namespace librealsense
                     frame_interface* pframe = nullptr;
                     std::swap((*pf).frame, pframe);
                     m_user_callback->on_frame((rs2_frame*)pframe);
-                });
+                }, !is_real_time);
             }
         }
-
     };
 }

@@ -91,12 +91,12 @@ EXPORTS
     rs2_supports_sensor_info
 
     rs2_create_frame_queue
-    rs2_set_frame_queue_blocking_enqueue
     rs2_delete_frame_queue
     rs2_wait_for_frame
     rs2_poll_for_frame
     rs2_try_wait_for_frame
     rs2_enqueue_frame
+    rs2_blocking_enqueue_frame
     rs2_flush_queue
 
     rs2_get_failed_function

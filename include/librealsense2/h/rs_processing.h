@@ -108,8 +108,6 @@ void rs2_delete_processing_block(rs2_processing_block* block);
 */
 rs2_frame_queue* rs2_create_frame_queue(int capacity, rs2_error** error);
 
-void rs2_set_frame_queue_blocking_enqueue(rs2_frame_queue* queue, unsigned char state, rs2_error** error);
-
 /**
 * deletes frame queue and releases all frames inside it
 * \param[in] queue queue to delete
@@ -150,6 +148,13 @@ int rs2_try_wait_for_frame(rs2_frame_queue* queue, unsigned int timeout_ms, rs2_
 * \param[in] queue the frame queue data structure
 */
 void rs2_enqueue_frame(rs2_frame* frame, void* queue);
+
+/**
+* enqueue new frame into a queue when possible, this call is blocking untill the queue can accept the frame
+* \param[in] frame frame handle to enqueue (this operation passed ownership to the queue)
+* \param[in] queue the frame queue data structure
+*/
+void rs2_blocking_enqueue_frame(rs2_frame* frame, void* queue);
 
 /**
 * Creates Align processing block.

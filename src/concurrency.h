@@ -32,12 +32,30 @@ public:
         : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true), _blocking(blocking)
     {}
 
+    void blocking_enqueue(T&& item)
+    {
+        auto pred = [this]()->bool { return q.size() <= cap; };
+
+        std::unique_lock<std::mutex> lock(mutex);
+        cv.wait(lock, pred);
+        q.push_back(std::move(item));
+        lock.unlock();
+        cv.notify_one();
+    }
+
     void enqueue(T&& item)
     {
-        if (_blocking)
-            blocking_enqueue(std::move(item));
-        else
-            non_blocking_enqueue(std::move(item));
+        std::unique_lock<std::mutex> lock(mutex);
+        if (accepting)
+        {
+            q.push_back(std::move(item));
+            if (q.size() > cap)
+            {
+                q.pop_front();
+            }
+        }
+        lock.unlock();
+        cv.notify_one();
     }
 
     bool dequeue(T* item, unsigned int timeout_ms = 5000)
@@ -120,33 +138,6 @@ public:
     {
         _blocking = is_blocking;
     }
-
-private:
-    void blocking_enqueue(T&& item)
-    {
-        auto pred = [this]()->bool { return q.size() <= cap; };
-
-        std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, pred);
-        q.push_back(std::move(item));
-        lock.unlock();
-        cv.notify_one();
-    }
-
-    void non_blocking_enqueue(T&& item)
-    {
-        std::unique_lock<std::mutex> lock(mutex);
-        if (accepting)
-        {
-            q.push_back(std::move(item));
-            if (q.size() > cap)
-            {
-                q.pop_front();
-            }
-        }
-        lock.unlock();
-        cv.notify_one();
-    }
 };
 
 
@@ -210,11 +201,14 @@ public:
     }
 
     template<class T>
-    void invoke(T item)
+    void invoke(T item, bool blocking = false)
     {
         if (!_was_stopped)
         {
-            _queue.enqueue(std::move(item));
+            if(blocking)
+                _queue.blocking_enqueue(std::move(item));
+            else
+                _queue.enqueue(std::move(item));
         }
     }
 
@@ -276,11 +270,6 @@ public:
         std::unique_lock<std::mutex> locker(m);
         *wait_sucess = cv.wait_for(locker, std::chrono::seconds(10), [&]() { return invoked || _was_stopped; });
         return *wait_sucess;
-    }
-
-    void set_blocking(bool is_blocking)
-    {
-        _queue.set_blocking(is_blocking);
     }
 
     bool empty()

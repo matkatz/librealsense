@@ -883,14 +883,6 @@ rs2_frame_queue* rs2_create_frame_queue(int capacity, rs2_error** error) BEGIN_A
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, capacity)
 
-void rs2_set_frame_queue_blocking_enqueue(rs2_frame_queue* queue, unsigned char state, rs2_error** error) BEGIN_API_CALL
-{
-    VALIDATE_NOT_NULL(queue);
-
-    queue->queue.set_blocking(state);
-}
-HANDLE_EXCEPTIONS_AND_RETURN(, queue, state)
-
 void rs2_delete_frame_queue(rs2_frame_queue* queue) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(queue);
@@ -955,6 +947,17 @@ void rs2_enqueue_frame(rs2_frame* frame, void* queue) BEGIN_API_CALL
     librealsense::frame_holder fh;
     fh.frame = (frame_interface*)frame;
     q->queue.enqueue(std::move(fh));
+}
+NOEXCEPT_RETURN(, frame, queue)
+
+void rs2_blocking_enqueue_frame(rs2_frame* frame, void* queue) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(frame);
+    VALIDATE_NOT_NULL(queue);
+    auto q = reinterpret_cast<rs2_frame_queue*>(queue);
+    librealsense::frame_holder fh;
+    fh.frame = (frame_interface*)frame;
+    q->queue.blocking_enqueue(std::move(fh));
 }
 NOEXCEPT_RETURN(, frame, queue)
 
