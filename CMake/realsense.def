@@ -96,7 +96,6 @@ EXPORTS
     rs2_poll_for_frame
     rs2_try_wait_for_frame
     rs2_enqueue_frame
-    rs2_blocking_enqueue_frame
     rs2_flush_queue
 
     rs2_get_failed_function

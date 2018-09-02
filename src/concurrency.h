@@ -9,6 +9,15 @@
 #include <atomic>
 #include <functional>
 
+class queueable
+{
+public:
+    bool is_blocking() const { return _blocking; };
+    void set_blocking(bool state) { _blocking = state; };
+private:
+    bool _blocking;
+};
+
 const int QUEUE_MAX_SIZE = 10;
 // Simplest implementation of a blocking concurrent queue for thread messaging
 template<class T>
@@ -19,7 +28,6 @@ class single_consumer_queue
     std::condition_variable cv; // not empty signal
     unsigned int cap;
     bool accepting;
-    bool _blocking;
 
     // flush mechanism is required to abort wait on cv
     // when need to stop
@@ -28,8 +36,8 @@ class single_consumer_queue
     std::condition_variable was_flushed_cv;
     std::mutex was_flushed_mutex;
 public:
-    explicit single_consumer_queue<T>(unsigned int cap = QUEUE_MAX_SIZE, bool blocking = false)
-        : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true), _blocking(blocking)
+    explicit single_consumer_queue<T>(unsigned int cap = QUEUE_MAX_SIZE)
+        : q(), mutex(), cv(), cap(cap), need_to_flush(false), was_flushed(false), accepting(true)
     {}
 
     void blocking_enqueue(T&& item)
@@ -133,13 +141,54 @@ public:
         std::unique_lock<std::mutex> lock(mutex);
         return q.size();
     }
-
-    void set_blocking(bool is_blocking)
-    {
-        _blocking = is_blocking;
-    }
 };
 
+template<class T>
+class single_consumer_frame_queue
+{
+    single_consumer_queue<T> _queue;
+
+public:
+    single_consumer_frame_queue<T>(unsigned int cap = QUEUE_MAX_SIZE) : _queue(cap) {}
+
+    void enqueue(T&& item)
+    {
+        if (item.is_blocking())
+            _queue.blocking_enqueue(std::move(item));
+        else
+            _queue.enqueue(std::move(item));
+    }
+
+    bool dequeue(T* item, unsigned int timeout_ms = 5000)
+    {
+        return _queue.dequeue(item, timeout_ms);
+    }
+
+    bool peek(T** item)
+    {
+        return _queue.peek(item);
+    }
+
+    bool try_dequeue(T* item)
+    {
+        return _queue.try_dequeue(item);
+    }
+
+    void clear()
+    {
+        _queue.clear();
+    }
+
+    void start()
+    {
+        _queue.start();
+    }
+
+    size_t size()
+    {
+        return _queue.size();
+    }
+};
 
 class dispatcher
 {
@@ -165,7 +214,7 @@ public:
     };
 
     dispatcher(unsigned int cap) :
-        _queue(cap, false),
+        _queue(cap),
         _was_stopped(true),
         _was_flushed(false),
         _is_alive(true),
@@ -205,7 +254,7 @@ public:
     {
         if (!_was_stopped)
         {
-            if(blocking)
+            if (blocking)
                 _queue.blocking_enqueue(std::move(item));
             else
                 _queue.enqueue(std::move(item));

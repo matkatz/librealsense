@@ -634,7 +634,7 @@ namespace librealsense
 
     class frame_interface;
 
-    struct frame_holder
+    struct frame_holder : public queueable
     {
         frame_interface* frame;
 

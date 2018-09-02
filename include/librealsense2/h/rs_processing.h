@@ -150,13 +150,6 @@ int rs2_try_wait_for_frame(rs2_frame_queue* queue, unsigned int timeout_ms, rs2_
 void rs2_enqueue_frame(rs2_frame* frame, void* queue);
 
 /**
-* enqueue new frame into a queue when possible, this call is blocking untill the queue can accept the frame
-* \param[in] frame frame handle to enqueue (this operation passed ownership to the queue)
-* \param[in] queue the frame queue data structure
-*/
-void rs2_blocking_enqueue_frame(rs2_frame* frame, void* queue);
-
-/**
 * Creates Align processing block.
 * \param[out] error  if non-null, receives any error that occurs during this call, otherwise, errors are ignored
 */

@@ -119,7 +119,7 @@ namespace rs2
         * to help developers who are not using async APIs
         * param[in] capacity size of the frame queue
         */
-        explicit frame_queue(unsigned int capacity, bool blocking = false) : _capacity(capacity), _blocking(blocking)
+        explicit frame_queue(unsigned int capacity) : _capacity(capacity)
         {
             rs2_error* e = nullptr;
             auto q = rs2_create_frame_queue(capacity, &e);
@@ -127,7 +127,7 @@ namespace rs2
             _queue = std::shared_ptr<rs2_frame_queue>(q, rs2_delete_frame_queue);
         }
 
-        frame_queue() : frame_queue(1, false) {}
+        frame_queue() : frame_queue(1) {}
 
         /**
         * enqueue new frame into a queue
@@ -135,10 +135,7 @@ namespace rs2
         */
         void enqueue(frame f) const
         {
-            if (_blocking)
-                rs2_blocking_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
-            else
-                rs2_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
+            rs2_enqueue_frame(f.frame_ref, _queue.get()); // noexcept
             f.frame_ref = nullptr; // frame has been essentially moved from
         }
 
@@ -198,7 +195,6 @@ namespace rs2
     private:
         std::shared_ptr<rs2_frame_queue> _queue;
         size_t _capacity;
-        bool _blocking;
     };
 
     /**
@@ -384,8 +380,8 @@ namespace rs2
         /**
         * Sync instance to align the different frames from different streams
         */
-        syncer(int queue_size = 1, bool blocking = false)
-            :_results(queue_size, blocking)
+        syncer(int queue_size = 1)
+            :_results(queue_size)
         {
             _sync.start(_results);
         }

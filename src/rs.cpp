@@ -99,8 +99,8 @@ struct rs2_pipeline_profile
 
 struct rs2_frame_queue
 {
-    explicit rs2_frame_queue(int cap, bool blocking)
-        : queue(cap, blocking)
+    explicit rs2_frame_queue(int cap)
+        : queue(cap)
     {
     }
 
@@ -879,7 +879,7 @@ HANDLE_EXCEPTIONS_AND_RETURN(nullptr, options, option, value)
 
 rs2_frame_queue* rs2_create_frame_queue(int capacity, rs2_error** error) BEGIN_API_CALL
 {
-    return new rs2_frame_queue(capacity, false);
+    return new rs2_frame_queue(capacity);
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, capacity)
 
@@ -947,17 +947,6 @@ void rs2_enqueue_frame(rs2_frame* frame, void* queue) BEGIN_API_CALL
     librealsense::frame_holder fh;
     fh.frame = (frame_interface*)frame;
     q->queue.enqueue(std::move(fh));
-}
-NOEXCEPT_RETURN(, frame, queue)
-
-void rs2_blocking_enqueue_frame(rs2_frame* frame, void* queue) BEGIN_API_CALL
-{
-    VALIDATE_NOT_NULL(frame);
-    VALIDATE_NOT_NULL(queue);
-    auto q = reinterpret_cast<rs2_frame_queue*>(queue);
-    librealsense::frame_holder fh;
-    fh.frame = (frame_interface*)frame;
-    q->queue.blocking_enqueue(std::move(fh));
 }
 NOEXCEPT_RETURN(, frame, queue)
 
