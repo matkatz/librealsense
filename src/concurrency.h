@@ -9,15 +9,6 @@
 #include <atomic>
 #include <functional>
 
-class queueable
-{
-public:
-    bool is_blocking() const { return _blocking; };
-    void set_blocking(bool state) { _blocking = state; };
-private:
-    bool _blocking;
-};
-
 const int QUEUE_MAX_SIZE = 10;
 // Simplest implementation of a blocking concurrent queue for thread messaging
 template<class T>
@@ -217,8 +208,7 @@ public:
         _queue(cap),
         _was_stopped(true),
         _was_flushed(false),
-        _is_alive(true),
-        _block_enqueue(false)
+        _is_alive(true)
     {
         _thread = std::thread([&]()
         {
@@ -340,7 +330,6 @@ private:
     std::mutex _was_flushed_mutex;
 
     std::atomic<bool> _is_alive;
-    std::atomic<bool> _block_enqueue;
 };
 
 template<class T = std::function<void(dispatcher::cancellable_timer)>>

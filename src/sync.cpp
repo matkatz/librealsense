@@ -532,32 +532,34 @@ namespace librealsense
 
     void timestamp_composite_matcher::clean_inactive_streams(frame_holder& f)
     {
-        //std::vector<stream_id> dead_matchers;
-        //auto now = environment::get_instance().get_time_service()->get_time();
-        //for(auto m: _matchers)
-        //{
-        //    auto threshold = _fps[m.second.get()] ? (1000 / _fps[m.second.get()]) * 5 : 500; //if frame of a specific stream didn't arrive for time equivalence to 5 frames duration
-        //                                                                                     //this stream will be marked as "not active" in order to not stack the other streams
-        //    if(_last_arrived[m.second.get()] && (now - _last_arrived[m.second.get()]) > threshold)
-        //    {
-        //        std::stringstream s;
-        //        s << "clean inactive stream in "<<_name;
-        //        for (auto stream : m.second->get_streams_types())
-        //        {
-        //            s << stream << " ";
-        //        }
-        //        LOG_DEBUG(s.str());
+        if (f.is_blocking())
+            return;
+        std::vector<stream_id> dead_matchers;
+        auto now = environment::get_instance().get_time_service()->get_time();
+        for(auto m: _matchers)
+        {
+            auto threshold = _fps[m.second.get()] ? (1000 / _fps[m.second.get()]) * 5 : 500; //if frame of a specific stream didn't arrive for time equivalence to 5 frames duration
+                                                                                             //this stream will be marked as "not active" in order to not stack the other streams
+            if(_last_arrived[m.second.get()] && (now - _last_arrived[m.second.get()]) > threshold)
+            {
+                std::stringstream s;
+                s << "clean inactive stream in "<<_name;
+                for (auto stream : m.second->get_streams_types())
+                {
+                    s << stream << " ";
+                }
+                LOG_DEBUG(s.str());
 
-        //        dead_matchers.push_back(m.first);
-        //        m.second->set_active(false);
-        //    }
-        //}
+                dead_matchers.push_back(m.first);
+                m.second->set_active(false);
+            }
+        }
 
-        //for(auto id: dead_matchers)
-        //{
-        //    _frames_queue[_matchers[id].get()].clear();
-        //    _frames_queue.erase(_matchers[id].get());
-        //}
+        for(auto id: dead_matchers)
+        {
+            _frames_queue[_matchers[id].get()].clear();
+            _frames_queue.erase(_matchers[id].get());
+        }
     }
 
     bool timestamp_composite_matcher::skip_missing_stream(std::vector<matcher*> synced, matcher* missing)
