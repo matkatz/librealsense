@@ -68,9 +68,10 @@ namespace librealsense
         stream_profiles m_available_profiles;
         stream_profiles m_active_streams;
         const unsigned int _default_queue_size;
+
     public:
-        template <class T>
-        void handle_frame(frame_holder frame, bool is_real_time, T calc_sleep)
+        template <class T, class K, class P>
+        void handle_frame(frame_holder frame, bool is_real_time, T calc_sleep, K was_paused, P last_pushed)
         {
             if (frame == nullptr)
             {
@@ -86,15 +87,22 @@ namespace librealsense
                 auto stream_id = frame.frame->get_stream()->get_unique_id();
                 //TODO: Ziv, remove usage of shared_ptr when frame_holder is cpoyable
                 auto pf = std::make_shared<frame_holder>(std::move(frame));
-                m_dispatchers.at(stream_id)->invoke([this, pf, calc_sleep](dispatcher::cancellable_timer t)
+
+                auto callback = [this, is_real_time, stream_id, pf, calc_sleep, was_paused, last_pushed](dispatcher::cancellable_timer t)
                 {
-                    auto sleep_for = calc_sleep() * 1e-6;
-                    if(sleep_for > 0)
-                        t.try_sleep(sleep_for); //enable when frames prefetching is enabled
+                    device_serializer::nanoseconds sleep_for = calc_sleep();
+                    if (sleep_for.count() > 0)
+                        t.try_sleep(sleep_for.count() * 1e-6);
+                    if (was_paused())
+                        return;
+
                     frame_interface* pframe = nullptr;
                     std::swap((*pf).frame, pframe);
                     m_user_callback->on_frame((rs2_frame*)pframe);
-                }, !is_real_time);
+
+                    last_pushed();
+                };
+                m_dispatchers.at(stream_id)->invoke(callback, !is_real_time);
             }
         }
     };
