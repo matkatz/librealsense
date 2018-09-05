@@ -126,9 +126,10 @@ notifications_callback_ptr playback_sensor::get_notifications_callback() const
     return _notifications_processor.get_callback();
 }
 
-
 void playback_sensor::start(frame_callback_ptr callback)
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
+
     LOG_DEBUG("Start sensor " << m_sensor_id);
     if (m_is_started == false)
     {
@@ -137,8 +138,11 @@ void playback_sensor::start(frame_callback_ptr callback)
         m_user_callback = callback;
     }
 }
+
 void playback_sensor::stop(bool invoke_required)
 {
+    std::lock_guard<std::mutex> locker(m_mutex);
+
     LOG_DEBUG("Stop sensor " << m_sensor_id);
 
     if (m_is_started == true)
@@ -147,7 +151,7 @@ void playback_sensor::stop(bool invoke_required)
         m_is_started = false;
         for (auto dispatcher : m_dispatchers)
         {
-            dispatcher.second->stop();
+            dispatcher.second->stop(false);
         }
         m_user_callback.reset();
     }
@@ -176,11 +180,20 @@ void playback_sensor::update_option(rs2_option id, std::shared_ptr<option> optio
 {
     register_option(id, option);
 }
+
 void playback_sensor::flush_pending_frames()
 {
     for (auto&& dispatcher : m_dispatchers)
     {
-        dispatcher.second->flush();
+        dispatcher.second->stop(true);
+    }
+}
+
+void playback_sensor::start_dispatchers()
+{
+    for (auto&& dispatcher : m_dispatchers)
+    {
+        dispatcher.second->start();
     }
 }
 

@@ -306,11 +306,17 @@ void playback_device::pause()
 void playback_device::resume()
 {
     LOG_DEBUG("Playback resume called");
+
     (*m_read_thread)->invoke([this](dispatcher::cancellable_timer t)
     {
         LOG_DEBUG("Playback resume invoked");
         if (m_is_paused == false)
            return;
+
+        for (auto sensor : m_sensors)
+        {
+            sensor.second->start_dispatchers();
+        }
 
         auto total_duration = m_reader->query_duration();
         if (m_last_published_timestamp >= total_duration)
@@ -480,6 +486,7 @@ void playback_device::do_loop(T action)
                 //NOTE: calling stop will remove the sensor from m_active_sensors
                 m_active_sensors.begin()->second->stop(false);
             }
+            m_last_published_timestamp = device_serializer::nanoseconds(0);
             //After all sensors were stopped, stop_internal() is called and flags m_is_started as false
             assert(m_is_started == false);
         }

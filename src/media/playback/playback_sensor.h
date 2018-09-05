@@ -42,6 +42,7 @@ namespace librealsense
         void update_option(rs2_option id, std::shared_ptr<option> option);
         void stop(bool invoke_required);
         void flush_pending_frames();
+        void start_dispatchers();
         void update(const device_serializer::sensor_snapshot& sensor_snapshot);
         frame_callback_ptr get_frames_callback() const override;
         void set_frames_callback(frame_callback_ptr callback) override;
@@ -91,9 +92,10 @@ namespace librealsense
                 auto callback = [this, is_real_time, stream_id, pf, calc_sleep, was_paused, last_pushed](dispatcher::cancellable_timer t)
                 {
                     device_serializer::nanoseconds sleep_for = calc_sleep();
+                    bool stop_request = false;
                     if (sleep_for.count() > 0)
-                        t.try_sleep(sleep_for.count() * 1e-6);
-                    if (was_paused())
+                        stop_request = t.try_sleep(sleep_for.count() * 1e-6);
+                    if (was_paused())// || stop_request)
                         return;
 
                     frame_interface* pframe = nullptr;

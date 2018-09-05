@@ -120,7 +120,7 @@ public:
         _cv.notify_all();
     }
 
-    void flush(T&& item)
+    void flush()
     {
         std::unique_lock<std::mutex> lock(_mutex);
 
@@ -132,7 +132,6 @@ public:
             _q.pop_front();
         }
         _cv.notify_all();
-        _q.push_back(std::move(item));
     }
 
     void start()
@@ -224,10 +223,20 @@ public:
         dispatcher* _owner;
     };
 
+private:
+    friend cancellable_timer;
+    single_consumer_queue<std::function<void(cancellable_timer)>> _queue;
+    std::thread _thread;
+    std::atomic<bool> _is_alive;
+
+    std::atomic<bool> _was_stopped;
+    std::condition_variable _was_stopped_cv;
+    std::mutex _was_stopped_mutex;
+
+public:
+
     dispatcher(unsigned int cap) :
         _queue(cap),
-        _was_stopped(true),
-        _was_flushed(false),
         _is_alive(true)
     {
         _thread = std::thread([&]()
@@ -246,17 +255,16 @@ public:
                     }
                     catch (...) {}
                 }
-
-#ifndef ANDROID
-                std::unique_lock<std::mutex> lock(_was_flushed_mutex);
-#endif
-                _was_flushed = true;
-                _was_flushed_cv.notify_all();
-#ifndef ANDROID
-                lock.unlock();
-#endif
             }
         });
+    }
+
+    ~dispatcher()
+    {
+        stop();
+        _queue.clear();
+        _is_alive = false;
+        _thread.join();
     }
 
     template<class T>
@@ -273,84 +281,46 @@ public:
 
     void start()
     {
-        std::unique_lock<std::mutex> lock(_was_stopped_mutex);
+        std::lock_guard<std::mutex> locker(_was_stopped_mutex);
         _was_stopped = false;
-
         _queue.start();
     }
 
-    void stop()
+    void stop(bool clear = true)
     {
         {
-            std::unique_lock<std::mutex> lock(_was_stopped_mutex);
+            std::lock_guard<std::mutex> locker(_was_stopped_mutex);
             _was_stopped = true;
             _was_stopped_cv.notify_all();
         }
-
-        _queue.clear();
-
-        {
-            std::unique_lock<std::mutex> lock(_was_flushed_mutex);
-            _was_flushed = false;
-        }
-
-        std::unique_lock<std::mutex> lock_was_flushed(_was_flushed_mutex);
-        _was_flushed_cv.wait_for(lock_was_flushed, std::chrono::hours(999999), [&]() { return _was_flushed.load(); });
-
-        _queue.start();
+        flush(clear);
     }
 
-    ~dispatcher()
+    bool flush(bool clear = false, int timeout_ms = 5000)
     {
-        stop();
-        _queue.clear();
-        _is_alive = false;
-        _thread.join();
-    }
-
-    bool flush()
-    {
-        std::mutex m;
         std::condition_variable cv;
         bool invoked = false;
-        auto wait_sucess = std::make_shared<std::atomic_bool>(true);
-        auto cleaner = [&, wait_sucess](cancellable_timer t)
-        {
-            ///TODO: use _queue to flush, and implement properly
-            if (_was_stopped || !(*wait_sucess))
-                return;
 
-            {
-                std::lock_guard<std::mutex> locker(m);
-                invoked = true;
-            }
+        auto cleaner = [&](cancellable_timer t)
+        {
+            invoked = true;
             cv.notify_one();
         };
-        _queue.flush(cleaner);
+
+        if (clear)
+            _queue.flush();
+
+        _queue.enqueue(cleaner);
+
+        std::mutex m;
         std::unique_lock<std::mutex> locker(m);
-        *wait_sucess = cv.wait_for(locker, std::chrono::seconds(5), [&]() { return invoked || _was_stopped; });
-        return *wait_sucess;
+        return cv.wait_for(locker, std::chrono::milliseconds(timeout_ms), [&]() { return invoked; });
     }
 
     bool empty()
     {
         return _queue.size() == 0;
     }
-
-private:
-    friend cancellable_timer;
-    single_consumer_queue<std::function<void(cancellable_timer)>> _queue;
-    std::thread _thread;
-
-    std::atomic<bool> _was_stopped;
-    std::condition_variable _was_stopped_cv;
-    std::mutex _was_stopped_mutex;
-
-    std::atomic<bool> _was_flushed;
-    std::condition_variable _was_flushed_cv;
-    std::mutex _was_flushed_mutex;
-
-    std::atomic<bool> _is_alive;
 };
 
 template<class T = std::function<void(dispatcher::cancellable_timer)>>
