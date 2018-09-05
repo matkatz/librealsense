@@ -72,7 +72,7 @@ namespace librealsense
 
     public:
         template <class T, class K, class P>
-        void handle_frame(frame_holder frame, bool is_real_time, T calc_sleep, K was_paused, P last_pushed)
+        void handle_frame(frame_holder frame, bool is_real_time, T calc_sleep, K was_paused, P update_last_pushed_frame)
         {
             if (frame == nullptr)
             {
@@ -89,20 +89,20 @@ namespace librealsense
                 //TODO: Ziv, remove usage of shared_ptr when frame_holder is cpoyable
                 auto pf = std::make_shared<frame_holder>(std::move(frame));
 
-                auto callback = [this, is_real_time, stream_id, pf, calc_sleep, was_paused, last_pushed](dispatcher::cancellable_timer t)
+                auto callback = [this, is_real_time, stream_id, pf, calc_sleep, was_paused, update_last_pushed_frame](dispatcher::cancellable_timer t)
                 {
                     device_serializer::nanoseconds sleep_for = calc_sleep();
                     bool stop_request = false;
                     if (sleep_for.count() > 0)
                         stop_request = t.try_sleep(sleep_for.count() * 1e-6);
-                    if (was_paused())// || stop_request)
+                    if (was_paused())
                         return;
 
                     frame_interface* pframe = nullptr;
                     std::swap((*pf).frame, pframe);
                     m_user_callback->on_frame((rs2_frame*)pframe);
 
-                    last_pushed();
+                    update_last_pushed_frame();
                 };
                 m_dispatchers.at(stream_id)->invoke(callback, !is_real_time);
             }

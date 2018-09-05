@@ -585,9 +585,7 @@ void playback_device::try_looping()
                 [this, timestamp]() 
                 { 
                     std::lock_guard<std::mutex> locker(m_last_published_timestamp_mutex);
-
-                    if(timestamp > m_last_published_timestamp)
-                        m_last_published_timestamp = timestamp; 
+                    m_last_published_timestamp = timestamp; 
                 });
             return true;
         }
