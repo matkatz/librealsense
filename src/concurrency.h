@@ -261,8 +261,7 @@ public:
 
     ~dispatcher()
     {
-        stop();
-        _queue.clear();
+        stop(true);
         _is_alive = false;
         _thread.join();
     }
@@ -296,7 +295,7 @@ public:
         flush(clear);
     }
 
-    bool flush(bool clear = false, int timeout_ms = 5000)
+    bool flush(bool clear = false, int timeout_ms = 10000)
     {
         std::condition_variable cv;
         bool invoked = false;
