@@ -1,0 +1,10 @@
+target_sources(${LRS_TARGET}
+    PRIVATE
+        "${CMAKE_CURRENT_LIST_DIR}/streamer.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/config.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/profile.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/streamer.h"
+        "${CMAKE_CURRENT_LIST_DIR}/config.h"
+        "${CMAKE_CURRENT_LIST_DIR}/profile.h"
+        "${CMAKE_CURRENT_LIST_DIR}/resolver.h"
+)

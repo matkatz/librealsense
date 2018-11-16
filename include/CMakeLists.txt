@@ -13,6 +13,7 @@ target_sources(${LRS_TARGET}
 		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/h/rs_sensor.h"
 		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/h/rs_internal.h"
 		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/h/rs_pipeline.h"
+		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/h/rs_config.h"
 
 		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/hpp/rs_types.hpp"
 		"${CMAKE_CURRENT_LIST_DIR}/librealsense2/hpp/rs_context.hpp"

@@ -89,12 +89,12 @@ struct rs2_pipeline
 
 struct rs2_config
 {
-    std::shared_ptr<librealsense::pipeline_config> config;
+    std::shared_ptr<librealsense::frame_streamer::config> config;
 };
 
 struct rs2_pipeline_profile
 {
-    std::shared_ptr<librealsense::pipeline_profile> profile;
+    std::shared_ptr<librealsense::frame_streamer::profile> profile;
 };
 
 struct rs2_frame_queue
@@ -1444,7 +1444,7 @@ NOEXCEPT_RETURN(, pipe)
 rs2_pipeline_profile* rs2_pipeline_start(rs2_pipeline* pipe, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(pipe);
-    return new rs2_pipeline_profile{ pipe->pipe->start(std::make_shared<pipeline_config>()) };
+    return new rs2_pipeline_profile{ pipe->pipe->start(std::make_shared<frame_streamer::config>()) };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, pipe)
 
@@ -1492,7 +1492,7 @@ NOEXCEPT_RETURN(, profile)
 //config
 rs2_config* rs2_create_config(rs2_error** error) BEGIN_API_CALL
 {
-    return new rs2_config{ std::make_shared<librealsense::pipeline_config>() };
+    return new rs2_config{ std::make_shared<frame_streamer::config>() };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, 0)
 
