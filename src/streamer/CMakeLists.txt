@@ -3,8 +3,13 @@ target_sources(${LRS_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/streamer.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/config.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/profile.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/async_streamer.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/sync_streamer.cpp"
+
         "${CMAKE_CURRENT_LIST_DIR}/streamer.h"
         "${CMAKE_CURRENT_LIST_DIR}/config.h"
         "${CMAKE_CURRENT_LIST_DIR}/profile.h"
         "${CMAKE_CURRENT_LIST_DIR}/resolver.h"
+        "${CMAKE_CURRENT_LIST_DIR}/async_streamer.h"
+        "${CMAKE_CURRENT_LIST_DIR}/sync_streamer.h"
 )

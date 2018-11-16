@@ -28,7 +28,8 @@
 #include "media/playback/playback_device.h"
 #include "stream.h"
 #include "../include/librealsense2/h/rs_types.h"
-#include "pipeline.h"
+#include "streamer/async_streamer.h"
+#include "streamer/sync_streamer.h"
 #include "environment.h"
 #include "proc/temporal-filter.h"
 #include "software-device.h"
@@ -84,7 +85,7 @@ struct rs2_device_hub
 
 struct rs2_pipeline
 {
-    std::shared_ptr<librealsense::pipeline> pipe;
+    std::shared_ptr<librealsense::frame_streamer::sync_streamer> pipe;
 };
 
 struct rs2_config
@@ -1374,7 +1375,7 @@ rs2_pipeline* rs2_create_pipeline(rs2_context* ctx, rs2_error ** error) BEGIN_AP
 {
     VALIDATE_NOT_NULL(ctx);
 
-    auto pipe = std::make_shared<librealsense::pipeline>(ctx->ctx);
+    auto pipe = std::make_shared<frame_streamer::sync_streamer>(ctx->ctx);
 
     return new rs2_pipeline{ pipe };
 }

@@ -61,25 +61,6 @@ namespace librealsense
             return _active_profile;
         }
 
-        frame_callback_ptr streamer::get_callback()
-        {
-            auto to_callback = [&](frame_holder fref)
-            {
-                auto s = fref.frame->get_stream();
-                auto it = _streams_callbacks.find({s->get_stream_type(), s->get_stream_index()});
-                if (it == _streams_callbacks.end())
-                    throw librealsense::invalid_value_exception("no callback was set for the requested profile");
-                it->second->on_frame((rs2_frame*)fref.frame);
-            };
-
-            frame_callback_ptr rv = {
-                new internal_frame_callback<decltype(to_callback)>(to_callback),
-                [](rs2_frame_callback* p) { p->release(); }
-            };
-
-            return rv;
-        }
-
         void streamer::unsafe_start(std::shared_ptr<config> conf)
         {
             std::shared_ptr<profile> profile = nullptr;
