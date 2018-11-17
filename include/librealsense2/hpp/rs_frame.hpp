@@ -11,7 +11,7 @@ namespace rs2
     class frame_source;
     class frame_queue;
     class syncer;
-    class processing_block;
+    class processing_block_base;
     class pointcloud;
     class sensor;
     class frame;
@@ -537,7 +537,7 @@ namespace rs2
         friend class rs2::frame_source;
         friend class rs2::frame_queue;
         friend class rs2::syncer;
-        friend class rs2::processing_block;
+        friend class rs2::processing_block_base;
         friend class rs2::pointcloud;
         friend class rs2::points;
 
