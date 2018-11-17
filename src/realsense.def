@@ -223,6 +223,21 @@ EXPORTS
 
     rs2_create_align
 
+    rs2_streamer_stop
+    rs2_delete_streamer
+    rs2_streamer_start
+    rs2_streamer_start_with_config
+    rs2_streamer_get_active_profile
+    rs2_streamer_profile_get_device
+    rs2_streamer_profile_get_streams
+    rs2_delete_streamer_profile
+    rs2_create_async_streamer
+    rs2_async_streamer_set_callbak
+    rs2_create_sync_streamer
+    rs2_sync_streamer_wait_for_frames
+    rs2_sync_streamer_poll_for_frames
+    rs2_sync_streamer_try_wait_for_frames
+
     rs2_create_pipeline
     rs2_pipeline_stop
     rs2_pipeline_wait_for_frames
@@ -235,6 +250,7 @@ EXPORTS
     rs2_pipeline_profile_get_device
     rs2_pipeline_profile_get_streams
     rs2_delete_pipeline_profile
+
     rs2_create_config
     rs2_delete_config
     rs2_config_enable_stream

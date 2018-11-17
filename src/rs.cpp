@@ -83,9 +83,24 @@ struct rs2_device_hub
     std::shared_ptr<librealsense::device_hub> hub;
 };
 
+struct rs2_streamer
+{
+     std::shared_ptr<librealsense::frame_streamer::streamer> streamer;
+};
+
+struct rs2_async_streamer : public rs2_streamer
+{
+
+};
+
+struct rs2_sync_streamer : public rs2_streamer
+{
+
+};
+
 struct rs2_pipeline
 {
-    std::shared_ptr<librealsense::frame_streamer::sync_streamer> pipe;
+    std::shared_ptr<librealsense::frame_streamer::sync_streamer> streamer;
 };
 
 struct rs2_config
@@ -1385,7 +1400,7 @@ void rs2_pipeline_stop(rs2_pipeline* pipe, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(pipe);
 
-    pipe->pipe->stop();
+    pipe->streamer->stop();
 }
 HANDLE_EXCEPTIONS_AND_RETURN(, pipe)
 
@@ -1393,7 +1408,7 @@ rs2_frame* rs2_pipeline_wait_for_frames(rs2_pipeline* pipe, unsigned int timeout
 {
     VALIDATE_NOT_NULL(pipe);
 
-    auto f = pipe->pipe->wait_for_frames(timeout_ms);
+    auto f = pipe->streamer->wait_for_frames(timeout_ms);
     auto frame = f.frame;
     f.frame = nullptr;
     return (rs2_frame*)(frame);
@@ -1406,7 +1421,7 @@ int rs2_pipeline_poll_for_frames(rs2_pipeline * pipe, rs2_frame** output_frame, 
     VALIDATE_NOT_NULL(output_frame);
 
     librealsense::frame_holder fh;
-    if (pipe->pipe->poll_for_frames(&fh))
+    if (pipe->streamer->poll_for_frames(&fh))
     {
         frame_interface* result = nullptr;
         std::swap(result, fh.frame);
@@ -1423,7 +1438,7 @@ int rs2_pipeline_try_wait_for_frames(rs2_pipeline* pipe, rs2_frame** output_fram
     VALIDATE_NOT_NULL(output_frame);
 
     librealsense::frame_holder fh;
-    if (pipe->pipe->try_wait_for_frames(&fh, timeout_ms))
+    if (pipe->streamer->try_wait_for_frames(&fh, timeout_ms))
     {
         frame_interface* result = nullptr;
         std::swap(result, fh.frame);
@@ -1445,7 +1460,7 @@ NOEXCEPT_RETURN(, pipe)
 rs2_pipeline_profile* rs2_pipeline_start(rs2_pipeline* pipe, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(pipe);
-    return new rs2_pipeline_profile{ pipe->pipe->start(std::make_shared<frame_streamer::config>()) };
+    return new rs2_pipeline_profile{ pipe->streamer->start(std::make_shared<frame_streamer::config>()) };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, pipe)
 
@@ -1453,7 +1468,7 @@ rs2_pipeline_profile* rs2_pipeline_start_with_config(rs2_pipeline* pipe, rs2_con
 {
     VALIDATE_NOT_NULL(pipe);
     VALIDATE_NOT_NULL(config);
-    return new rs2_pipeline_profile{ pipe->pipe->start(config->config) };
+    return new rs2_pipeline_profile{ pipe->streamer->start(config->config) };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, pipe, config)
 
@@ -1461,7 +1476,7 @@ rs2_pipeline_profile* rs2_pipeline_get_active_profile(rs2_pipeline* pipe, rs2_er
 {
     VALIDATE_NOT_NULL(pipe);
 
-    return new rs2_pipeline_profile{ pipe->pipe->get_active_profile() };
+    return new rs2_pipeline_profile{ pipe->streamer->get_active_profile() };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, pipe)
 
@@ -1588,7 +1603,7 @@ rs2_pipeline_profile* rs2_config_resolve(rs2_config* config, rs2_pipeline* pipe,
 {
     VALIDATE_NOT_NULL(config);
     VALIDATE_NOT_NULL(pipe);
-    return new rs2_pipeline_profile{ config->config->resolve(pipe->pipe) };
+    return new rs2_pipeline_profile{ config->config->resolve(pipe->streamer) };
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, config, pipe)
 
@@ -1596,7 +1611,7 @@ int rs2_config_can_resolve(rs2_config* config, rs2_pipeline* pipe, rs2_error ** 
 {
     VALIDATE_NOT_NULL(config);
     VALIDATE_NOT_NULL(pipe);
-    return config->config->can_resolve(pipe->pipe) ? 1 : 0;
+    return config->config->can_resolve(pipe->streamer) ? 1 : 0;
 }
 HANDLE_EXCEPTIONS_AND_RETURN(0, config, pipe)
 
@@ -2034,3 +2049,151 @@ void rs2_disconnect_tm2_controller(const rs2_device* device, int id, rs2_error**
     tm2->disconnect_controller(id);
 }
 HANDLE_EXCEPTIONS_AND_RETURN(, device)
+
+
+
+
+
+
+
+void rs2_streamer_stop(rs2_streamer* streamer, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+
+    streamer->streamer->stop();
+}
+HANDLE_EXCEPTIONS_AND_RETURN(, streamer)
+
+void rs2_delete_streamer(rs2_streamer* streamer) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+
+    delete streamer;
+}
+NOEXCEPT_RETURN(, streamer)
+
+rs2_pipeline_profile* rs2_streamer_start(rs2_streamer* streamer, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+    return new rs2_pipeline_profile{ streamer->streamer->start(std::make_shared<frame_streamer::config>()) };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, streamer)
+
+rs2_pipeline_profile* rs2_streamer_start_with_config(rs2_streamer* streamer, rs2_config* config, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+    VALIDATE_NOT_NULL(config);
+    return new rs2_pipeline_profile{ streamer->streamer->start(config->config) };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, streamer, config)
+
+rs2_pipeline_profile* rs2_streamer_get_active_profile(rs2_streamer* streamer, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+
+    return new rs2_pipeline_profile{ streamer->streamer->get_active_profile() };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, streamer)
+
+rs2_device* rs2_streamer_profile_get_device(rs2_pipeline_profile* profile, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(profile);
+
+    auto dev = profile->profile->get_device();
+    auto dev_info = std::make_shared<librealsense::readonly_device_info>(dev);
+    return new rs2_device{ dev->get_context(), dev_info , dev };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, profile)
+
+rs2_stream_profile_list* rs2_streamer_profile_get_streams(rs2_pipeline_profile* profile, rs2_error** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(profile);
+    return new rs2_stream_profile_list{ profile->profile->get_active_streams() };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, profile)
+
+void rs2_delete_streamer_profile(rs2_pipeline_profile* profile) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(profile);
+
+    delete profile;
+}
+NOEXCEPT_RETURN(, profile)
+
+rs2_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(ctx);
+
+    auto streamer = std::make_shared<frame_streamer::async_streamer>(ctx->ctx);
+
+    return (rs2_async_streamer*)new rs2_streamer{ streamer };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, ctx)
+
+void rs2_async_streamer_set_callbak(rs2_streamer* streamer, rs2_frame_callback* on_frame, rs2_stream stream, int index, rs2_error** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+    auto s = std::dynamic_pointer_cast<frame_streamer::async_streamer>(streamer->streamer);
+    s->set_callback(stream, index, { on_frame, [](rs2_frame_callback* p) { p->release(); } });
+}
+HANDLE_EXCEPTIONS_AND_RETURN(, streamer, on_frame, stream, index)
+
+rs2_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(ctx);
+
+    auto streamer = std::make_shared<frame_streamer::sync_streamer>(ctx->ctx);
+
+    return (rs2_sync_streamer*)new rs2_streamer{ streamer };
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, ctx)
+
+rs2_frame* rs2_sync_streamer_wait_for_frames(rs2_streamer* streamer, unsigned int timeout_ms, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+
+    auto s = std::dynamic_pointer_cast<frame_streamer::sync_streamer>(streamer->streamer);
+    auto f = s->wait_for_frames(timeout_ms);
+    auto frame = f.frame;
+    f.frame = nullptr;
+    return (rs2_frame*)(frame);
+}
+HANDLE_EXCEPTIONS_AND_RETURN(nullptr, streamer)
+
+int rs2_sync_streamer_poll_for_frames(rs2_sync_streamer* streamer, rs2_frame** output_frame, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+    VALIDATE_NOT_NULL(output_frame);
+
+    auto s = std::dynamic_pointer_cast<frame_streamer::sync_streamer>(streamer->streamer);
+
+    librealsense::frame_holder fh;
+    if (s->poll_for_frames(&fh))
+    {
+        frame_interface* result = nullptr;
+        std::swap(result, fh.frame);
+        *output_frame = (rs2_frame*)result;
+        return true;
+    }
+    return false;
+}
+HANDLE_EXCEPTIONS_AND_RETURN(0, streamer, output_frame)
+
+int rs2_sync_streamer_try_wait_for_frames(rs2_sync_streamer* streamer, rs2_frame** output_frame, unsigned int timeout_ms, rs2_error ** error) BEGIN_API_CALL
+{
+    VALIDATE_NOT_NULL(streamer);
+    VALIDATE_NOT_NULL(output_frame);
+
+    auto s = std::dynamic_pointer_cast<frame_streamer::sync_streamer>(streamer->streamer);
+
+    librealsense::frame_holder fh;
+    if (s->try_wait_for_frames(&fh, timeout_ms))
+    {
+        frame_interface* result = nullptr;
+        std::swap(result, fh.frame);
+        *output_frame = (rs2_frame*)result;
+        return true;
+    }
+    return false;
+}
+HANDLE_EXCEPTIONS_AND_RETURN(0, streamer, output_frame)

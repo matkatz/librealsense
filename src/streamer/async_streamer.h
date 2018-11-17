@@ -21,6 +21,8 @@ namespace librealsense
             frame_callback_ptr get_callback() override;
 
         private:
+            bool get_callback(std::shared_ptr<stream_profile_interface> s, frame_callback_ptr& out);
+
             std::map<std::pair<rs2_stream, int>, frame_callback_ptr> _streams_callbacks;
         };
     }

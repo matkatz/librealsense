@@ -95,6 +95,7 @@ namespace rs2
     };
 
     class pipeline;
+    class async_streamer;
     class device_hub;
 
     /**
@@ -213,6 +214,7 @@ namespace rs2
         explicit operator std::shared_ptr<rs2_context>() { return _context; };
 protected:
         friend class rs2::pipeline;
+        friend class rs2::async_streamer;
         friend class rs2::device_hub;
 
         

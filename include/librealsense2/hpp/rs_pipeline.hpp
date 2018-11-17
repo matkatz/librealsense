@@ -515,5 +515,97 @@ namespace rs2
         std::shared_ptr<rs2_pipeline> _pipeline;
         friend class config;
     };
+
+    class streamer
+    {
+    public:
+        pipeline_profile start()
+        {
+            rs2_error* e = nullptr;
+            auto p = std::shared_ptr<rs2_pipeline_profile>(
+                rs2_streamer_start(_streamer.get(), &e),
+                rs2_delete_pipeline_profile);
+
+            error::handle(e);
+            return pipeline_profile(p);
+        }
+
+        pipeline_profile start(const config& config)
+        {
+            rs2_error* e = nullptr;
+            auto p = std::shared_ptr<rs2_pipeline_profile>(
+                rs2_streamer_start_with_config(_streamer.get(), config.get().get(), &e),
+                rs2_delete_pipeline_profile);
+
+            error::handle(e);
+            return pipeline_profile(p);
+        }
+
+        void stop()
+        {
+            rs2_error* e = nullptr;
+            rs2_streamer_stop(_streamer.get(), &e);
+            error::handle(e);
+        }
+
+        pipeline_profile get_active_profile() const
+        {
+            rs2_error* e = nullptr;
+            auto p = std::shared_ptr<rs2_pipeline_profile>(
+                rs2_streamer_get_active_profile(_streamer.get(), &e),
+                rs2_delete_pipeline_profile);
+
+            error::handle(e);
+            return pipeline_profile(p);
+        }
+
+        operator std::shared_ptr<rs2_streamer>() const
+        {
+            return _streamer;
+        }
+        explicit streamer() {}
+        explicit streamer(std::shared_ptr<rs2_streamer> ptr) : _streamer(ptr) {}
+
+    protected:
+        std::shared_ptr<rs2_streamer> _streamer;
+    private:
+        friend class config;
+    };
+
+    class async_streamer : public streamer
+    {
+    public:
+        async_streamer(context ctx = context())
+        {
+            rs2_error* e = nullptr;
+            _streamer = std::shared_ptr<rs2_streamer>(
+                rs2_create_async_streamer(ctx._context.get(), &e),
+                rs2_delete_streamer);
+            error::handle(e);
+        }
+
+        template<class S>
+        void set_callback(rs2_stream stream, int index, S on_frame)
+        {
+            rs2_error* e = nullptr;
+            rs2_async_streamer_set_callbak(_streamer.get(), new frame_callback<S>(on_frame), stream, index, &e);
+            error::handle(e);
+        }
+
+        template<class S>
+        void set_callback(S on_frame)
+        {
+            set_callback( RS2_STREAM_ANY, -1, on_frame);
+        }
+
+        template<class S>
+        void set_callback(rs2_stream stream, S on_frame)
+        {
+            set_callback(stream, -1, on_frame);
+        }
+
+    private:
+        friend class config;
+    };
 }
 #endif // LIBREALSENSE_RS2_PROCESSING_HPP

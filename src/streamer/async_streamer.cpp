@@ -18,16 +18,37 @@ namespace librealsense
             _streams_callbacks[{stream, index}] = callback; 
         }
 
+        bool async_streamer::get_callback(std::shared_ptr<stream_profile_interface> s, frame_callback_ptr& out)
+        {
+            auto it = _streams_callbacks.find({ RS2_STREAM_ANY, -1 });
+            if (it != _streams_callbacks.end())
+            {
+                out = it->second;
+                return true;
+            }
+            it = _streams_callbacks.find({ s->get_stream_type(), -1 });
+            if (it != _streams_callbacks.end())
+            {
+                out = it->second;
+                return true;
+            }
+            it = _streams_callbacks.find({ s->get_stream_type(), s->get_stream_index() });
+            if (it != _streams_callbacks.end())
+            {
+                out = it->second;
+                return true;
+            }
+            return false;
+        }
 
         frame_callback_ptr async_streamer::get_callback()
         {
             auto to_callback = [&](frame_holder fref)
             {
-                auto s = fref.frame->get_stream();
-                auto it = _streams_callbacks.find({s->get_stream_type(), s->get_stream_index()});
-                if (it == _streams_callbacks.end())
-                    throw librealsense::invalid_value_exception("no callback was set for the requested profile");
-                it->second->on_frame((rs2_frame*)fref.frame);
+                frame_callback_ptr out;
+                if(get_callback(fref->get_stream(), out))
+                    out->on_frame((rs2_frame*)fref.frame);
+                //else throw librealsense::invalid_value_exception("no callback was set for the requested profile");
             };
 
             frame_callback_ptr rv = {

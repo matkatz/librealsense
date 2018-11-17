@@ -192,12 +192,6 @@ extern "C" {
     */
     int rs2_config_can_resolve(rs2_config* config, rs2_pipeline* pipe, rs2_error ** error);
 
-    void rs2_config_set_callbak(rs2_config* config,
-        rs2_frame_callback* on_frame,
-        rs2_stream stream,
-        int index,
-        rs2_error** error);
-
 #ifdef __cplusplus
 }
 #endif

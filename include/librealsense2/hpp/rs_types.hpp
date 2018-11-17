@@ -12,6 +12,7 @@
 #include "../h/rs_record_playback.h"
 #include "../h/rs_sensor.h"
 #include "../h/rs_pipeline.h"
+#include "../h/rs_streamer.h"
 
 #include <string>
 #include <vector>
