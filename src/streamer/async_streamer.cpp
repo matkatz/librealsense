@@ -20,7 +20,7 @@ namespace librealsense
 
         bool async_streamer::get_callback(std::shared_ptr<stream_profile_interface> s, frame_callback_ptr& out)
         {
-            auto it = _streams_callbacks.find({ RS2_STREAM_ANY, -1 });
+            auto it = _streams_callbacks.find({ s->get_stream_type(), s->get_stream_index() });
             if (it != _streams_callbacks.end())
             {
                 out = it->second;
@@ -32,7 +32,7 @@ namespace librealsense
                 out = it->second;
                 return true;
             }
-            it = _streams_callbacks.find({ s->get_stream_type(), s->get_stream_index() });
+            it = _streams_callbacks.find({ RS2_STREAM_ANY, -1 });
             if (it != _streams_callbacks.end())
             {
                 out = it->second;
