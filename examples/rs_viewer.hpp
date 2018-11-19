@@ -16,7 +16,18 @@
 #include <map>
 #include <mutex>
 
-#define M_PI 3.1428
+#define M_PI 3.14159265359
+#define DEFAULT_SUB_WINDOW_SIZE 200
+#include "../third-party/stb_easy_font.h"
+
+inline void draw_text(int x, int y, const char * text)
+{
+    char buffer[60000]; // ~300 chars
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 16, buffer);
+    glDrawArrays(GL_QUADS, 0, 4 * stb_easy_font_print((float)x, (float)(y - 7), (char *)text, nullptr, buffer, sizeof(buffer)));
+    glDisableClientState(GL_VERTEX_ARRAY);
+}
 
 //////////////////////////////
 // Basic Data Types         //
@@ -138,10 +149,10 @@ private:
     {
         _window = create_gl_window();
         glGenTextures(1, &_frame_buffer_name);
-        float a = 0;
+        float a = 0.1;
+
         while (!glfwWindowShouldClose(_window.get()))
         {
-            a += 0.1;
             glfwMakeContextCurrent(_window.get());
             glfwPollEvents();
 
@@ -154,11 +165,15 @@ private:
 
             for (auto&& r : _last_frames)
             {
-                render(r.second);
+                if(r.second.is<rs2::video_frame>())
+                    render_video_frame(r.second);
+                if (r.second.is<rs2::motion_frame>())
+                    render_motion_frame(r.second);
             }
+            a += 0.1;
+            draw_motion_data(sin(a), cos(a), sin(a), _view_ports[{RS2_STREAM_GYRO, 0}], "GYRO");
+            draw_motion_data(cos(a), sin(a), cos(a), _view_ports[{RS2_STREAM_ACCEL, 0}], "ACCEL");
 
-            draw_motion_data(sin(a), cos(a), sin(a), _view_ports[{RS2_STREAM_GYRO, 0}]);
-            draw_motion_data(cos(a), sin(a), cos(a), _view_ports[{RS2_STREAM_ACCEL, 0}]);
             glfwSwapBuffers(_window.get());
             glFlush();
         }
@@ -168,9 +183,13 @@ private:
     {
         auto p = f.get_profile();
         auto it = _frame_size.find({ p.stream_type(), p.stream_index() });
-        auto vf = f.as<rs2::video_frame>();
         if (it == _frame_size.end())
-            _frame_size[{p.stream_type(), p.stream_index()}] = { (float)vf.get_width(), (float)vf.get_height() };
+        {
+            if (auto vf = f.as<rs2::video_frame>())
+                _frame_size[{p.stream_type(), p.stream_index()}] = { (float)vf.get_width(), (float)vf.get_height() };
+            else
+                _frame_size[{p.stream_type(), p.stream_index()}] = { DEFAULT_SUB_WINDOW_SIZE, DEFAULT_SUB_WINDOW_SIZE };
+        }
 
         calc_grid();
 
@@ -178,11 +197,17 @@ private:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void render(const rs2::frame& f)
+    void render_motion_frame(const rs2::motion_frame& f)
     {
         auto p = f.get_profile();
         auto r = _view_ports[{p.stream_type(), p.stream_index()}];
-        auto&& vf = f.as<rs2::video_frame>();
+        glViewport(r.x, r.y, r.w, r.h);
+    }
+
+    void render_video_frame(const rs2::video_frame& f)
+    {
+        auto p = f.get_profile();
+        auto r = _view_ports[{p.stream_type(), p.stream_index()}];
 
         glViewport(r.x, r.y, r.w, r.h);
 
@@ -195,13 +220,13 @@ private:
         switch (format)
         {
         case RS2_FORMAT_RGB8:
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, vf.get_width(), vf.get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, f.get_data());
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, f.get_width(), f.get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, f.get_data());
             break;
         case RS2_FORMAT_RGBA8:
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vf.get_width(), vf.get_height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, f.get_data());
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, f.get_width(), f.get_height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, f.get_data());
             break;
         case RS2_FORMAT_Y8:
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, vf.get_width(), vf.get_height(), 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, f.get_data());
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, f.get_width(), f.get_height(), 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, f.get_data());
             break;
         default:
             throw std::runtime_error("The requested format is not supported by this demo!");
@@ -209,7 +234,7 @@ private:
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(GL_TEXTURE_2D, _frame_buffer_name);
         glEnable(GL_TEXTURE_2D);
         glBegin(GL_QUADS);
         glTexCoord2f(0, 0); glVertex2f(0, 0);
@@ -218,6 +243,8 @@ private:
         glTexCoord2f(1, 0); glVertex2f(r.w, 0);
         glEnd();
         glDisable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        draw_text(20, r.h-10, p.stream_name().c_str());
         glPopMatrix();
     }
 
@@ -273,6 +300,7 @@ private:
         case RS2_FORMAT_RGB8:
         case RS2_FORMAT_RGBA8:
         case RS2_FORMAT_Y8:
+        case RS2_FORMAT_MOTION_XYZ32F:
             return true;
         default:
             return false;
@@ -359,8 +387,10 @@ private:
         glEnd();
     }
 
-    void draw_motion_data(float x, float y, float z, rect r)
+    void draw_motion_data(float x, float y, float z, rect r, std::string str)
     {
+        draw_text(20, r.h - 10, str.c_str());
+
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glMatrixMode(GL_MODELVIEW);
@@ -369,6 +399,7 @@ private:
         glViewport(r.x, r.y, r.w, r.h);
         //glClearColor(0, 0, 0, 1);
         //glClear(GL_COLOR_BUFFER_BIT);
+        draw_text(20, r.h - 10, str.c_str());
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
@@ -438,12 +469,19 @@ private:
             //s2 << std::setprecision(precision) << norm;
             //print_text_in_3d(x / 2, y / 2, z / 2, s2.str().c_str(), true, model, proj, 1 / norm);
         }
+        draw_text(20, r.h + 10, str.c_str());
 
-        glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 768, 768, 0);
+        glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, r.x, r.y, r.w, r.h, 0);
+        draw_text(20, r.h - 10, str.c_str());
 
         glMatrixMode(GL_MODELVIEW);
         glPopMatrix();
+        draw_text(20, r.h - 10, str.c_str());
+
         glMatrixMode(GL_PROJECTION);
         glPopMatrix();
+        glDisable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        draw_text(20, r.h + 10, str.c_str());
     }
 };
