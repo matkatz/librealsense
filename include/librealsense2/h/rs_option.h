@@ -64,6 +64,7 @@ typedef enum rs2_option
     RS2_OPTION_STEREO_BASELINE                            , /**< The distance in mm between the first and the second imagers in stereo-based depth cameras*/
     RS2_OPTION_AUTO_EXPOSURE_CONVERGE_STEP                , /**< Allows dynamically ajust the converge step value of the target exposure in Auto-Exposure algorithm*/
     RS2_OPTION_INTER_CAM_SYNC_MODE                        , /**< Impose Inter-camera HW synchronization mode. Applicable for D400/Rolling Shutter SKUs */
+    RS2_OPTION_STREAM_FORMAT_FILTER                       , /**< Select a stream format to process */
     RS2_OPTION_STREAM_FILTER                              , /**< Select a stream to process */
     RS2_OPTION_STREAM_INDEX_FILTER                        , /**< Select a stream index to process */
     RS2_OPTION_HARDWARE_PRESET                            , /**< Hardware stream configuration */

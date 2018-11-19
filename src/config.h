@@ -147,6 +147,9 @@ namespace librealsense
                         return true;
                 }
 
+                // Evgeni - do not upstream this code . For Android dev only!!!!!!
+                return false;
+
                 if (auto vid_a = dynamic_cast<video_stream_profile_interface*>(a))
                 {
                     for (auto request : others)
