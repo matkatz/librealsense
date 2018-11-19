@@ -96,6 +96,7 @@ namespace rs2
 
     class pipeline;
     class async_streamer;
+    class sync_streamer;
     class device_hub;
 
     /**
@@ -215,9 +216,9 @@ namespace rs2
 protected:
         friend class rs2::pipeline;
         friend class rs2::async_streamer;
+        friend class rs2::sync_streamer;
         friend class rs2::device_hub;
 
-        
         std::shared_ptr<rs2_context> _context;
     };
 

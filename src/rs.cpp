@@ -2120,7 +2120,7 @@ void rs2_delete_streamer_profile(rs2_pipeline_profile* profile) BEGIN_API_CALL
 }
 NOEXCEPT_RETURN(, profile)
 
-rs2_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
+rs2_async_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(ctx);
 
@@ -2130,7 +2130,7 @@ rs2_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error) BE
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, ctx)
 
-void rs2_async_streamer_set_callbak(rs2_streamer* streamer, rs2_frame_callback* on_frame, rs2_stream stream, int index, rs2_error** error) BEGIN_API_CALL
+void rs2_async_streamer_set_callbak(rs2_async_streamer* streamer, rs2_frame_callback* on_frame, rs2_stream stream, int index, rs2_error** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(streamer);
     auto s = std::dynamic_pointer_cast<frame_streamer::async_streamer>(streamer->streamer);
@@ -2138,7 +2138,7 @@ void rs2_async_streamer_set_callbak(rs2_streamer* streamer, rs2_frame_callback* 
 }
 HANDLE_EXCEPTIONS_AND_RETURN(, streamer, on_frame, stream, index)
 
-rs2_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
+rs2_sync_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(ctx);
 
@@ -2148,7 +2148,7 @@ rs2_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error) BEG
 }
 HANDLE_EXCEPTIONS_AND_RETURN(nullptr, ctx)
 
-rs2_frame* rs2_sync_streamer_wait_for_frames(rs2_streamer* streamer, unsigned int timeout_ms, rs2_error ** error) BEGIN_API_CALL
+rs2_frame* rs2_sync_streamer_wait_for_frames(rs2_sync_streamer* streamer, unsigned int timeout_ms, rs2_error ** error) BEGIN_API_CALL
 {
     VALIDATE_NOT_NULL(streamer);
 

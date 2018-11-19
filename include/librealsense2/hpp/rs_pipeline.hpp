@@ -579,7 +579,7 @@ namespace rs2
         {
             rs2_error* e = nullptr;
             _streamer = std::shared_ptr<rs2_streamer>(
-                rs2_create_async_streamer(ctx._context.get(), &e),
+                (rs2_streamer*)rs2_create_async_streamer(ctx._context.get(), &e),
                 rs2_delete_streamer);
             error::handle(e);
         }
@@ -588,7 +588,7 @@ namespace rs2
         void set_callback(rs2_stream stream, int index, S on_frame)
         {
             rs2_error* e = nullptr;
-            rs2_async_streamer_set_callbak(_streamer.get(), new frame_callback<S>(on_frame), stream, index, &e);
+            rs2_async_streamer_set_callbak((rs2_async_streamer*)_streamer.get(), new frame_callback<S>(on_frame), stream, index, &e);
             error::handle(e);
         }
 
@@ -602,6 +602,60 @@ namespace rs2
         void set_callback(rs2_stream stream, S on_frame)
         {
             set_callback(stream, -1, on_frame);
+        }
+
+    private:
+        friend class config;
+    };
+
+    class sync_streamer : public streamer
+    {
+    public:
+        sync_streamer(context ctx = context())
+        {
+            rs2_error* e = nullptr;
+            _streamer = std::shared_ptr<rs2_streamer>(
+                (rs2_streamer*)rs2_create_sync_streamer(ctx._context.get(), &e),
+                rs2_delete_streamer);
+            error::handle(e);
+        }
+
+        frameset wait_for_frames(unsigned int timeout_ms = 5000) const
+        {
+            rs2_error* e = nullptr;
+            frame f(rs2_sync_streamer_wait_for_frames((rs2_sync_streamer*)_streamer.get(), timeout_ms, &e));
+            error::handle(e);
+
+            return frameset(f);
+        }
+
+        bool poll_for_frames(frameset* f) const
+        {
+            if (!f)
+            {
+                throw std::invalid_argument("null frameset");
+            }
+            rs2_error* e = nullptr;
+            rs2_frame* frame_ref = nullptr;
+            auto res = rs2_sync_streamer_poll_for_frames((rs2_sync_streamer*)_streamer.get(), &frame_ref, &e);
+            error::handle(e);
+
+            if (res) *f = frameset(frame(frame_ref));
+            return res > 0;
+        }
+
+        bool try_wait_for_frames(frameset* f, unsigned int timeout_ms = 5000) const
+        {
+            if (!f)
+            {
+                throw std::invalid_argument("null frameset");
+            }
+            rs2_error* e = nullptr;
+            rs2_frame* frame_ref = nullptr;
+            auto res = rs2_sync_streamer_try_wait_for_frames((rs2_sync_streamer*)_streamer.get(), &frame_ref, timeout_ms, &e);
+            error::handle(e);
+            if (res) *f = frameset(frame(frame_ref));
+            return res > 0;
         }
 
     private:

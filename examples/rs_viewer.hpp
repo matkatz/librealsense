@@ -14,6 +14,10 @@
 #include <algorithm>
 #include <thread>
 #include <map>
+#include <mutex>
+
+#define M_PI 3.1428
+
 //////////////////////////////
 // Basic Data Types         //
 //////////////////////////////
@@ -49,11 +53,17 @@ public:
         _window_width(window_width),
         _window_height(window_height),
         _window_title(window_title),
-        processing_block([this](rs2::frame f, rs2::frame_source& s)
+        processing_block([this](rs2::frame& f, const rs2::frame_source& s)
     {
-        //f.keep();
-        _input_queue.enqueue(f);
-        s.frame_ready(f);
+        auto vf = f.as<rs2::video_frame>();
+        auto profile = f.get_profile().clone(vf.get_profile().stream_type(), vf.get_profile().stream_index(), vf.get_profile().format());
+        rs2::frame ret = s.allocate_video_frame(profile, f, vf.get_bytes_per_pixel(), vf.get_width(),
+            vf.get_height(), vf.get_width() * vf.get_bytes_per_pixel(), RS2_EXTENSION_VIDEO_FRAME);
+        auto data = reinterpret_cast<uint8_t*>(const_cast<void *>(ret.get_data()));
+
+        memcpy(data, f.get_data(), vf.get_height() * vf.get_width() * vf.get_bytes_per_pixel());
+        _input_queue.enqueue(ret);
+        s.frame_ready(ret);
     })
     {
         _render_thread = std::thread(&viewer_window::render_thread, this);
@@ -89,6 +99,9 @@ private:
 
     std::shared_ptr<GLFWwindow> create_gl_window()
     {
+        _frame_size[{RS2_STREAM_GYRO, 0}] = { 640,640 };
+        _frame_size[{RS2_STREAM_ACCEL, 0}] = { 640,640 };
+
         glfwInit();
         auto w = glfwCreateWindow(_window_width, _window_height, _window_title.c_str(), nullptr, nullptr);
         if (!w)
@@ -132,21 +145,27 @@ private:
     {
         _window = create_gl_window();
         glGenTextures(1, &_frame_buffer_name);
-
+        float a = 0;
         while (!glfwWindowShouldClose(_window.get()))
         {
-            auto f = _input_queue.wait_for_frame();
-
-            try_handle_frame(f);
-
+            a += 0.1;
             glfwMakeContextCurrent(_window.get());
             glfwPollEvents();
 
-            for (auto& r : _last_frames)
+            rs2::frame f;
+            if (!_input_queue.poll_for_frame(&f))
+                continue;
+
+            try_handle_frame(f);
+
+
+            for (auto&& r : _last_frames)
             {
                 render(r.second);
             }
 
+            draw_motion_data(sin(a), cos(a), sin(a), _view_ports[{RS2_STREAM_GYRO, 0}]);
+            draw_motion_data(cos(a), sin(a), cos(a), _view_ports[{RS2_STREAM_ACCEL, 0}]);
             glfwSwapBuffers(_window.get());
             glFlush();
         }
@@ -170,7 +189,7 @@ private:
     {
         auto p = f.get_profile();
         auto r = _view_ports[{p.stream_type(), p.stream_index()}];
-        auto& vf = f.as<rs2::video_frame>();
+        auto&& vf = f.as<rs2::video_frame>();
 
         glViewport(r.x, r.y, r.w, r.h);
 
@@ -265,5 +284,173 @@ private:
         default:
             return false;
         }
+    }
+
+    static void  draw_axes(float axis_size = 1.f, float axisWidth = 4.f)
+    {
+
+        // Triangles For X axis
+        glBegin(GL_TRIANGLES);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex3f(axis_size * 1.1f, 0.f, 0.f);
+        glVertex3f(axis_size, -axis_size * 0.05f, 0.f);
+        glVertex3f(axis_size, axis_size * 0.05f, 0.f);
+        glVertex3f(axis_size * 1.1f, 0.f, 0.f);
+        glVertex3f(axis_size, 0.f, -axis_size * 0.05f);
+        glVertex3f(axis_size, 0.f, axis_size * 0.05f);
+        glEnd();
+
+        // Triangles For Y axis
+        glBegin(GL_TRIANGLES);
+        glColor3f(0.f, 1.f, 0.f);
+        glVertex3f(0.f, axis_size * 1.1f, 0.0f);
+        glVertex3f(0.f, axis_size, 0.05f * axis_size);
+        glVertex3f(0.f, axis_size, -0.05f * axis_size);
+        glVertex3f(0.f, axis_size * 1.1f, 0.0f);
+        glVertex3f(0.05f * axis_size, axis_size, 0.f);
+        glVertex3f(-0.05f * axis_size, axis_size, 0.f);
+        glEnd();
+
+        // Triangles For Z axis
+        glBegin(GL_TRIANGLES);
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex3f(0.0f, 0.0f, 1.1f * axis_size);
+        glVertex3f(0.0f, 0.05f * axis_size, 1.0f * axis_size);
+        glVertex3f(0.0f, -0.05f * axis_size, 1.0f * axis_size);
+        glVertex3f(0.0f, 0.0f, 1.1f * axis_size);
+        glVertex3f(0.05f * axis_size, 0.f, 1.0f * axis_size);
+        glVertex3f(-0.05f * axis_size, 0.f, 1.0f * axis_size);
+        glEnd();
+
+        glLineWidth(axisWidth);
+
+        // Drawing Axis
+        glBegin(GL_LINES);
+        // X axis - Red
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(axis_size, 0.0f, 0.0f);
+
+        // Y axis - Green
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, axis_size, 0.0f);
+
+        // Z axis - Blue
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, axis_size);
+        glEnd();
+    }
+
+    // intensity is grey intensity
+    static void draw_circle(float xx, float xy, float xz, float yx, float yy, float yz, float radius = 1.1, float3 center = { 0.0, 0.0, 0.0 }, float intensity = 0.5f)
+    {
+        const auto N = 50;
+        glColor3f(intensity, intensity, intensity);
+        glLineWidth(2);
+        glBegin(GL_LINE_STRIP);
+
+        for (int i = 0; i <= N; i++)
+        {
+            const double theta = (2 * M_PI / N) * i;
+            const auto cost = static_cast<float>(cos(theta));
+            const auto sint = static_cast<float>(sin(theta));
+            glVertex3f(
+                center.x + radius * (xx * cost + yx * sint),
+                center.y + radius * (xy * cost + yy * sint),
+                center.z + radius * (xz * cost + yz * sint)
+            );
+        }
+
+        glEnd();
+    }
+
+    void draw_motion_data(float x, float y, float z, rect r)
+    {
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+
+        glViewport(r.x, r.y, r.w, r.h);
+        //glClearColor(0, 0, 0, 1);
+        //glClear(GL_COLOR_BUFFER_BIT);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+
+        glOrtho(-2.8, 2.8, -2.4, 2.4, -7, 7);
+
+        glRotatef(25, 1.0f, 0.0f, 0.0f);
+
+        glTranslatef(0, -0.33f, -1.f);
+
+        float norm = std::sqrt(x*x + y * y + z * z);
+
+        glRotatef(-135, 0.0f, 1.0f, 0.0f);
+
+        draw_axes();
+
+        draw_circle(1, 0, 0, 0, 1, 0);
+        draw_circle(0, 1, 0, 0, 0, 1);
+        draw_circle(1, 0, 0, 0, 0, 1);
+
+        const auto canvas_size = 230;
+        const auto vec_threshold = 0.01f;
+        if (norm < vec_threshold)
+        {
+            const auto radius = 0.05;
+            static const int circle_points = 100;
+            static const float angle = 2.0f * 3.1416f / circle_points;
+
+            glColor3f(1.0f, 1.0f, 1.0f);
+            glBegin(GL_POLYGON);
+            double angle1 = 0.0;
+            glVertex2d(radius * cos(0.0), radius * sin(0.0));
+            int i;
+            for (i = 0; i < circle_points; i++)
+            {
+                glVertex2d(radius * cos(angle1), radius *sin(angle1));
+                angle1 += angle;
+            }
+            glEnd();
+        }
+        else
+        {
+            auto vectorWidth = 5.f;
+            glLineWidth(vectorWidth);
+            glBegin(GL_LINES);
+            glColor3f(1.0f, 1.0f, 1.0f);
+            glVertex3f(0.0f, 0.0f, 0.0f);
+            glVertex3f(x / norm, y / norm, z / norm);
+            glEnd();
+
+            // Save model and projection matrix for later
+            GLfloat model[16];
+            glGetFloatv(GL_MODELVIEW_MATRIX, model);
+            GLfloat proj[16];
+            glGetFloatv(GL_PROJECTION_MATRIX, proj);
+
+            glLoadIdentity();
+            glOrtho(-canvas_size, canvas_size, -canvas_size, canvas_size, -1, +1);
+
+            std::ostringstream s1;
+            const auto precision = 3;
+
+            //s1 << "(" << std::fixed << std::setprecision(precision) << x << "," << std::fixed << std::setprecision(precision) << y << "," << std::fixed << std::setprecision(precision) << z << ")";
+            //print_text_in_3d(x, y, z, s1.str().c_str(), false, model, proj, 1 / norm);
+
+            std::ostringstream s2;
+            //s2 << std::setprecision(precision) << norm;
+            //print_text_in_3d(x / 2, y / 2, z / 2, s2.str().c_str(), true, model, proj, 1 / norm);
+        }
+
+        glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 768, 768, 0);
+
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
     }
 };

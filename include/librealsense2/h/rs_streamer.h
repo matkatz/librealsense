@@ -35,16 +35,16 @@ rs2_stream_profile_list* rs2_streamer_profile_get_streams(rs2_pipeline_profile* 
 void rs2_delete_streamer_profile(rs2_pipeline_profile* profile);
 
 // async streamer
-rs2_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error);
+rs2_async_streamer* rs2_create_async_streamer(rs2_context* ctx, rs2_error ** error);
 
-void rs2_async_streamer_set_callbak(rs2_streamer* streamer, rs2_frame_callback* on_frame, rs2_stream stream, int index, rs2_error** error);
+void rs2_async_streamer_set_callbak(rs2_async_streamer* streamer, rs2_frame_callback* on_frame, rs2_stream stream, int index, rs2_error** error);
 
 // sync streamer
-rs2_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error);
+rs2_sync_streamer* rs2_create_sync_streamer(rs2_context* ctx, rs2_error ** error);
 
 rs2_frame* rs2_sync_streamer_wait_for_frames(rs2_sync_streamer* streamer, unsigned int timeout_ms, rs2_error ** error);
 
-int rs2_sync_streamer_poll_for_frames(rs2_streamer* streamer, rs2_frame** output_frame, rs2_error ** error);
+int rs2_sync_streamer_poll_for_frames(rs2_sync_streamer* streamer, rs2_frame** output_frame, rs2_error ** error);
 
 int rs2_sync_streamer_try_wait_for_frames(rs2_sync_streamer* streamer, rs2_frame** output_frame, unsigned int timeout_ms, rs2_error ** error);
 #ifdef __cplusplus
