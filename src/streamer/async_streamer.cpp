@@ -46,8 +46,12 @@ namespace librealsense
             auto to_callback = [&](frame_holder fref)
             {
                 frame_callback_ptr out;
-                if(get_callback(fref->get_stream(), out))
-                    out->on_frame((rs2_frame*)fref.frame);
+                if (get_callback(fref->get_stream(), out))
+                {
+                    frame_interface* ptr = nullptr;
+                    std::swap(fref.frame, ptr);
+                    out->on_frame((rs2_frame*)ptr);
+                }
                 //else throw librealsense::invalid_value_exception("no callback was set for the requested profile");
             };
 

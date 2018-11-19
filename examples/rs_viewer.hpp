@@ -45,31 +45,24 @@ struct rect
     }
 };
 
-class viewer_window : public rs2::processing_block
+class viewer : public rs2::processing_block
 {
 public:
-    viewer_window(int window_width, int window_height, std::string window_title = "RealSense Viewer") :
+    viewer(int window_width, int window_height, std::string window_title = "RealSense Viewer") :
         _input_queue(1),
         _window_width(window_width),
         _window_height(window_height),
         _window_title(window_title),
         processing_block([this](rs2::frame& f, const rs2::frame_source& s)
     {
-        auto vf = f.as<rs2::video_frame>();
-        auto profile = f.get_profile().clone(vf.get_profile().stream_type(), vf.get_profile().stream_index(), vf.get_profile().format());
-        rs2::frame ret = s.allocate_video_frame(profile, f, vf.get_bytes_per_pixel(), vf.get_width(),
-            vf.get_height(), vf.get_width() * vf.get_bytes_per_pixel(), RS2_EXTENSION_VIDEO_FRAME);
-        auto data = reinterpret_cast<uint8_t*>(const_cast<void *>(ret.get_data()));
-
-        memcpy(data, f.get_data(), vf.get_height() * vf.get_width() * vf.get_bytes_per_pixel());
-        _input_queue.enqueue(ret);
-        s.frame_ready(ret);
+        _input_queue.enqueue(f);
+        s.frame_ready(f);
     })
     {
-        _render_thread = std::thread(&viewer_window::render_thread, this);
+        _render_thread = std::thread(&viewer::render_thread, this);
     }
 
-    ~viewer_window()
+    ~viewer()
     {
         if(_render_thread.joinable())
             _render_thread.join();
