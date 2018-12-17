@@ -30,7 +30,7 @@ before_install:
       mkdir build && cd build;
       mkdir Debug;
       pwd;
-      cmake -DBUILD_EXAMPLES=true -DBUILD_PYTHON_BINDINGS=true -DBUILD_NODEJS_BINDINGS=true -DBUILD_UNIT_TESTS=true
+      cmake -DBUILD_EXAMPLES=true -DBUILD_PYTHON_BINDINGS=true -DBUILD_NODEJS_BINDINGS=true -DBUILD_UNIT_TESTS=true;
       cmake --build . --config Debug;
     fi
     # Run linter
