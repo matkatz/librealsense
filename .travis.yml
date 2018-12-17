@@ -26,7 +26,7 @@ before_install:
       for i in `pyenv versions|sed 's/ //g'|grep "^2"`; do if [ $i = "2.7" ]; then continue; else pyenv uninstall -f $i; fi; done;
     fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      npm --help;
+      pwd;
     fi
     # Run linter
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
