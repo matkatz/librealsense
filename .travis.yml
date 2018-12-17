@@ -1,5 +1,6 @@
 os:
   - linux
+  - windows
   - osx
 
 language: cpp
@@ -7,6 +8,9 @@ language: cpp
 sudo: required
 dist: trusty
 osx_image: xcode7
+cache:
+  directories:
+    - $HOME/.npm
 
 before_install:
   # Install nodejs via nvm
@@ -20,6 +24,9 @@ before_install:
     # Remove duplicated python 2.x, only leave python2.7; Otherwise node-gyp will complain and stop
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       for i in `pyenv versions|sed 's/ //g'|grep "^2"`; do if [ $i = "2.7" ]; then continue; else pyenv uninstall -f $i; fi; done;
+    fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+      npm --help;
     fi
     # Run linter
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
