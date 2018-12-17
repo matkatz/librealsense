@@ -30,7 +30,8 @@ before_install:
       mkdir build && cd build;
       mkdir Debug;
       pwd;
-      cmake .. --build --config Debug;
+      cmake ..;
+      cmake --build . --config Debug;
     fi
     # Run linter
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
