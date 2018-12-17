@@ -1,16 +1,17 @@
-os:
-  - linux
-  - windows
-  - osx
-
-language: cpp
-
-sudo: required
-dist: trusty
-osx_image: xcode7
-cache:
-  directories:
-    - $HOME/.npm
+matrix:
+  include:
+    - os: linux
+      language: cpp
+      sudo: required
+      dist: trusty
+    - os: osx
+      language: cpp
+      sudo: required
+      dist: trusty
+      osx_image: xcode7
+    - os: windows
+      language: cpp
+      sudo: false
 
 before_install:
   # Install nodejs via nvm
@@ -27,6 +28,8 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       pwd;
+      mkdir build && cd build
+      cmake .. 
     fi
     # Run linter
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
