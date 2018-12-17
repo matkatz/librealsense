@@ -114,7 +114,7 @@ script:
       for record in $tests_list; do echo $url_records_path$record; wget $url_records_path$record -P "records/"$(echo $record | cut -d '/' -f 1); done;
 
       pwd;
-      /c/Users/travis/build/matkatz/librealsense/build/unit-tests/live-test -d yes -i [software-device];
+      /c/Users/travis/build/matkatz/librealsense/build/Debug/live-test -d yes -i [software-device];
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       set -e;
