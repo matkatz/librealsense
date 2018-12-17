@@ -28,6 +28,7 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       mkdir build && cd build;
+      mkdir Debug;
       pwd;
       cmake .. --build --config Debug;
     fi
