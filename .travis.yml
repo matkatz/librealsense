@@ -28,7 +28,7 @@ before_install:
     fi
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       pwd;
-      mkdir build && cd build
+      mkdir build && cd build;
       cmake .. 
     fi
     # Run linter
