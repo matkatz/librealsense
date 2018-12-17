@@ -29,7 +29,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
       mkdir build && cd build;
       pwd;
-      cmake ..;
+      cmake .. --build --config Debug;
     fi
     # Run linter
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
