@@ -11,7 +11,13 @@ matrix:
       osx_image: xcode7
     - os: windows
       language: cpp
-      sudo: required
+      sudo: false
+      deploy:
+          provider: releases
+          #api_key: "GITHUB OAUTH TOKEN"
+          file: "build/Debug/realsense2.dll"
+          skip_cleanup: true
+          draft: true
 
 before_install:
   # Install nodejs via nvm
@@ -111,11 +117,11 @@ script:
       tests_list=`cat $records_name`;
 
       echo "Downloading unit-test records...";
-      for record in $tests_list; do echo $url_records_path$record; wget $url_records_path$record -P "records/"$(echo $record | cut -d '/' -f 1); done;
+      #for record in $tests_list; do echo $url_records_path$record; wget $url_records_path$record -P "records/"$(echo $record | cut -d '/' -f 1); done;
 
       pwd;
-      ls /c/Users/travis/build/matkatz/librealsense/build/Debug
-      /c/Users/travis/build/matkatz/librealsense/build/Debug/live-test -d yes -i [software-device];
+      #ls /c/Users/travis/build/matkatz/librealsense/build/Debug
+      #/c/Users/travis/build/matkatz/librealsense/build/Debug/live-test -d yes -i [software-device];
     fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       set -e;
