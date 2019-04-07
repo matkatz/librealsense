@@ -68,7 +68,7 @@ namespace librealsense
         case RS2_FORMAT_BGRA8: return 32;
         case RS2_FORMAT_Y8: return 8;
         case RS2_FORMAT_Y16: return 16;
-        case RS2_FORMAT_RAW10: return 10;
+        case RS2_FORMAT_RAW10: return 16;// Evgeni  10; Temporally convert RAW10 to SHORT16 representation
         case RS2_FORMAT_RAW16: return 16;
         case RS2_FORMAT_RAW8: return 8;
         case RS2_FORMAT_UYVY: return 16;
@@ -231,6 +231,22 @@ namespace librealsense
         auto count = width * height;
         librealsense::copy(dest[0], source, (5 * (count / 4)));
     }
+
+	void unpack_w10(byte * const dest[], const byte * source, int width, int height)
+	{
+		auto count = width/4 * height; // num of pixels
+		uint8_t  * from = (uint8_t*)(source);
+		uint16_t * to	= (uint16_t*)(dest[0]);
+
+		// Put the 10 bit into the msb of uint16_t
+		for (int i = 0; i < count; i++, from +=5) // traverse macro-pixels
+		{
+			*to++ = ((from[0] << 2) | ( from[4] & 3)) << 6;
+			*to++ = ((from[1] << 2) | ((from[4] >> 2) & 3)) << 6;
+			*to++ = ((from[2] << 2) | ((from[4] >> 4) & 3)) << 6;
+			*to++ = ((from[3] << 2) | ((from[4] >> 6) & 3)) << 6;
+		}
+	}
 
     template<class SOURCE, class UNPACK> void unpack_pixels(byte * const dest[], int count, const SOURCE * source, UNPACK unpack)
     {
@@ -1028,7 +1044,8 @@ namespace librealsense
     const native_pixel_format pf_bayer16                  = { 'BYR2', 1, 2, {  { false,               &copy_pixels<2>,                               { { RS2_STREAM_COLOR,          RS2_FORMAT_RAW16 } } } } };
     const native_pixel_format pf_rw10                     = { 'pRAA', 1, 1, {  { false,               &copy_raw10,                                   { { RS2_STREAM_COLOR,          RS2_FORMAT_RAW10 } } } } };
     // W10 development format will be exposed to the user via Y8
-    const native_pixel_format pf_w10                      = { 'W10 ', 1, 1, {  { true,                &unpack_y8_from_rw10,                        { { { RS2_STREAM_INFRARED, 1 },  RS2_FORMAT_Y8 } } } } };
+    // Evgeni - replace 8bit extranction with spawning 10 bit into 16 bit
+    const native_pixel_format pf_w10                      = { 'W10 ', 1, 2, {  { true,                &unpack_w10,                                   { { { RS2_STREAM_INFRARED, 1 },  RS2_FORMAT_RAW10 } } } } };
 
     const native_pixel_format pf_yuy2                     = { 'YUY2', 1, 2, {  { true,                &unpack_yuy2<RS2_FORMAT_RGB8 >,                { { RS2_STREAM_COLOR,          RS2_FORMAT_RGB8 } } },
                                                                                { true,                &unpack_yuy2<RS2_FORMAT_Y16>,                  { { RS2_STREAM_COLOR,          RS2_FORMAT_Y16 } } },

@@ -283,6 +283,7 @@ namespace librealsense
             CASE(LLD_TEMPERATURE)
             CASE(MC_TEMPERATURE)
             CASE(MA_TEMPERATURE)
+            CASE(HARDWARE_PRESET)
         default: assert(!is_valid(value)); return UNKNOWN_VALUE;
         }
 #undef CASE
