@@ -24,7 +24,7 @@ namespace librealsense
         usb_messenger_libusb::usb_messenger_libusb(const std::shared_ptr<usb_device_libusb>& device)
             : _device(device)
         {
-            listen_to_interrupts();
+            
         }
 
         usb_messenger_libusb::~usb_messenger_libusb()
