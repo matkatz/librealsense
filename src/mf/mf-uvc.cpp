@@ -1,8 +1,6 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2015 Intel Corporation. All Rights Reserved.
 
-#ifdef RS2_USE_WMF_BACKEND
-
 #if (_MSC_FULL_VER < 180031101)
 #error At least Visual Studio 2013 Update 4 is required to compile this backend
 #endif
@@ -26,7 +24,7 @@ The library will be compiled without the metadata support!\n")
 
 #define DEVICE_ID_MAX_SIZE 256
 
-#include "win-uvc.h"
+#include "mf-uvc.h"
 #include "../types.h"
 #include "libuvc/uvc_types.h"
 
@@ -725,8 +723,8 @@ namespace librealsense
                     auto name = win_to_utf(wchar_name);
                     CoTaskMemFree(wchar_name);
 
-                    uint16_t vid, pid, mi; std::string unique_id;
-                    if (!parse_usb_path_multiple_interface(vid, pid, mi, unique_id, name)) continue;
+                    uint16_t vid, pid, mi; std::string unique_id, guid;
+                    if (!parse_usb_path_multiple_interface(vid, pid, mi, unique_id, name, guid)) continue;
 
                     uvc_device_info info;
                     info.vid = vid;
@@ -1167,5 +1165,3 @@ namespace librealsense
         }
     }
 }
-
-#endif
