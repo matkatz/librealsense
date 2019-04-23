@@ -65,7 +65,7 @@ namespace librealsense
             return devices;
         }
 
-        std::shared_ptr<usb_device> win7_backend::create_usb_device(usb_device_info info) const
+        std::shared_ptr<command_transfer> win7_backend::create_usb_device(usb_device_info info) const
         {
             return std::make_shared<winusb_bulk_transfer>(info);
         }

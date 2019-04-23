@@ -4,6 +4,7 @@
 
 #include "../backend.h"
 #include "win/win-helpers.h"
+#include "command_transfer.h"
 
 #include <winusb.h>
 #include <SetupAPI.h>
@@ -76,7 +77,7 @@ namespace librealsense
         };
 
         //TODO_MK temp empty implementation, this all class should be removed
-        class winusb_bulk_transfer : public usb_device_mock
+        class winusb_bulk_transfer : public command_transfer
         {
         public:
             std::vector<uint8_t> send_receive(

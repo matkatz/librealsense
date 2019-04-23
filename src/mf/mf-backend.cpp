@@ -65,12 +65,13 @@ namespace librealsense
             return devices;
         }
 
-        std::shared_ptr<usb_device> wmf_backend::create_usb_device(usb_device_info info) const
+        std::shared_ptr<command_transfer> wmf_backend::create_usb_device(usb_device_info info) const
         {
             for (auto&& usb : usb_enumerator::query_devices())
             {
-                if (info.id == usb->get_info().id)
-                    return usb;
+                if (info.id == usb->get_info().id) {
+                    std::make_shared<platform::command_transfer_usb>(usb);
+                }
             }
             return nullptr;
         }

@@ -1579,14 +1579,14 @@ namespace librealsense
             return uvc_nodes;
         }
 
-        std::shared_ptr<usb_device> v4l_backend::create_usb_device(usb_device_info info) const
+        std::shared_ptr<command_transfer> v4l_backend::create_usb_device(usb_device_info info) const
         {
             auto devices =  usb_enumerator::query_devices();
             for(auto&& dev : devices)
             {
                 auto i = dev->get_info();
-                if(i.unique_id == info.unique_id)
-                    return dev;
+                if(i.id == info.id)
+                    return std::make_shared<platform::command_transfer_usb>(dev);
             }
             return nullptr;
         }

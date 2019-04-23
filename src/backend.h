@@ -9,6 +9,7 @@
 #include "../include/librealsense2/h/rs_option.h"
 #include "usb/usb-types.h"
 #include "usb/usb-device.h"
+#include "command_transfer.h"
 
 #include <memory>       // For shared_ptr
 #include <functional>   // For function
@@ -600,7 +601,7 @@ namespace librealsense
             virtual std::shared_ptr<uvc_device> create_uvc_device(uvc_device_info info) const = 0;
             virtual std::vector<uvc_device_info> query_uvc_devices() const = 0;
 
-            virtual std::shared_ptr<usb_device> create_usb_device(usb_device_info info) const = 0;
+            virtual std::shared_ptr<command_transfer> create_usb_device(usb_device_info info) const = 0;
             virtual std::vector<usb_device_info> query_usb_devices() const = 0;
 
             virtual std::shared_ptr<hid_device> create_hid_device(hid_device_info info) const = 0;

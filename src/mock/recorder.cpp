@@ -993,8 +993,7 @@ namespace librealsense
         {
             return _owner->try_record([&](recording* rec, lookup_key k)
             {
-                command_transfer_usb ctu(_source);
-                auto result = ctu.send_receive(data, timeout_ms, require_response);
+                auto result = _source->send_receive(data, timeout_ms, require_response);
 
                 auto&& c = rec->add_call(k);
                 c.param1 = rec->save_blob((void*)data.data(), static_cast<int>(data.size()));
@@ -1055,7 +1054,7 @@ namespace librealsense
             }, 0, call_type::query_uvc_devices);
         }
 
-        shared_ptr<usb_device> record_backend::create_usb_device(usb_device_info info) const
+        shared_ptr<command_transfer> record_backend::create_usb_device(usb_device_info info) const
         {
             return try_record([&](recording* rec, lookup_key k)
             {
@@ -1137,7 +1136,7 @@ namespace librealsense
             return _rec->load_uvc_device_info_list();
         }
 
-        shared_ptr<usb_device> playback_backend::create_usb_device(usb_device_info info) const
+        shared_ptr<command_transfer> playback_backend::create_usb_device(usb_device_info info) const
         {
             auto&& c = _rec->find_call(call_type::create_usb_device, 0);
 

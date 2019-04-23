@@ -200,12 +200,6 @@ namespace librealsense
             _uvc_sensor_base(uvc_ep)
         {}
 
-        locked_transfer(platform::rs_usb_device dev, uvc_sensor& uvc_ep)
-            : _uvc_sensor_base(uvc_ep)
-        {
-            _command_transfer = std::make_shared<platform::command_transfer_usb>(dev);
-        }
-
         std::vector<uint8_t> send_receive(
             const std::vector<uint8_t>& data,
             int timeout_ms = 5000,

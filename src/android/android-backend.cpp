@@ -42,12 +42,12 @@ namespace librealsense {
             return device_watcher_usbhost::instance()->query_uvc_devices();
         }
 
-        std::shared_ptr<usb_device> android_backend::create_usb_device(usb_device_info info) const {
+        std::shared_ptr<command_transfer> android_backend::create_usb_device(usb_device_info info) const {
             auto devices = usb_enumerator::query_devices();
             for(auto&& dev : devices){
                 auto curr = dev->get_info();
                 if(info.id == curr.id)
-                    return dev;
+                    return std::make_shared<platform::command_transfer_usb>(dev);
             }
             return nullptr;
         }

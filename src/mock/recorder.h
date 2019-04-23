@@ -387,12 +387,12 @@ namespace librealsense
         public:
             std::vector<uint8_t> send_receive(const std::vector<uint8_t>& data, int timeout_ms, bool require_response) override;
 
-            record_usb_device(rs_usb_device source,
+            record_usb_device(std::shared_ptr<command_transfer> source,
                 int id, const record_backend* owner)
                 : _source(source), _entity_id(id), _owner(owner) {}
 
         private:
-            rs_usb_device _source;
+            std::shared_ptr<command_transfer> _source;
             int _entity_id;
             const record_backend* _owner;
         };
@@ -426,7 +426,7 @@ namespace librealsense
             std::vector<hid_device_info> query_hid_devices() const override;
             std::shared_ptr<uvc_device> create_uvc_device(uvc_device_info info) const override;
             std::vector<uvc_device_info> query_uvc_devices() const override;
-            std::shared_ptr<usb_device> create_usb_device(usb_device_info info) const override;
+            std::shared_ptr<command_transfer> create_usb_device(usb_device_info info) const override;
             std::vector<usb_device_info> query_usb_devices() const override;
             std::shared_ptr<time_service> create_time_service() const override;
             std::shared_ptr<device_watcher> create_device_watcher() const override;
@@ -550,7 +550,8 @@ namespace librealsense
             std::vector<uint8_t> send_receive(const std::vector<uint8_t>& data, int timeout_ms, bool require_response) override;
 
             explicit playback_usb_device(std::shared_ptr<recording> rec,
-                int id) : _rec(rec), _entity_id(id) {}
+                int id) : _rec(rec), _entity_id(id) 
+            {}
 
         private:
             std::shared_ptr<recording> _rec;
@@ -589,7 +590,7 @@ namespace librealsense
             std::vector<hid_device_info> query_hid_devices() const override;
             std::shared_ptr<uvc_device> create_uvc_device(uvc_device_info info) const override;
             std::vector<uvc_device_info> query_uvc_devices() const override;
-            std::shared_ptr<usb_device> create_usb_device(usb_device_info info) const override;
+            std::shared_ptr<command_transfer> create_usb_device(usb_device_info info) const override;
             std::vector<usb_device_info> query_usb_devices() const override;
             std::shared_ptr<time_service> create_time_service() const override;
             std::shared_ptr<device_watcher> create_device_watcher() const override;
