@@ -16,7 +16,7 @@ import com.intel.realsense.librealsense.FrameSet;
 import com.intel.realsense.librealsense.GLRsSurfaceView;
 
 public class PreviewActivity extends AppCompatActivity {
-    private static final String TAG = "librs camera pr";
+    private static final String TAG = "librs camera preview";
 
     private static final int PLAYBACK_REQUEST_CODE = 0;
     private static final int SETTINGS_REQUEST_CODE = 1;
@@ -130,7 +130,7 @@ public class PreviewActivity extends AppCompatActivity {
             if(mStreamer != null)
                 mStreamer.stop();
             Log.e(TAG, e.getMessage());
-            Toast.makeText(this, "Invalid configuration selected", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Failed to set streaming configuration ", Toast.LENGTH_LONG).show();
             Intent intent = new Intent(PreviewActivity.this, SettingsActivity.class);
             startActivityForResult(intent, SETTINGS_REQUEST_CODE);
         }
