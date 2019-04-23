@@ -12,18 +12,14 @@ macro(os_set_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
     ## Check for Windows Version ##
-    if( (${CMAKE_SYSTEM_VERSION} EQUAL 6.1) OR (FORCE_WINUSB_UVC) ) # Windows 7
-        message(STATUS "Build for Win7")
-        set(BUILD_FOR_WIN7 ON)
+    if(${CMAKE_SYSTEM_VERSION} EQUAL 6.1) # Windows 7
         set(FORCE_WINUSB_UVC ON)
-    else() # Some other windows version
-        message(STATUS "Build for Windows > Win7")
-        set(BUILD_FOR_OTHER_WIN ON)
-        set(BACKEND RS2_USE_WMF_BACKEND)
     endif()
 
     if(FORCE_WINUSB_UVC)
         set(BACKEND RS2_USE_WINUSB_UVC_BACKEND)
+    else()
+        set(BACKEND RS2_USE_WMF_BACKEND)
     endif()
 
     if (MSVC)
@@ -51,7 +47,7 @@ macro(os_target_config)
         )
     endif()
 
-    if(BUILD_FOR_WIN7)
+    if(FORCE_WINUSB_UVC)
         if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
             message("Preparing Windows 7 drivers" )
             make_directory(${CMAKE_CURRENT_BINARY_DIR}/drivers/)
