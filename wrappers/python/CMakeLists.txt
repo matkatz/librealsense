@@ -90,7 +90,9 @@ if(${BACKEND} STREQUAL RS2_USE_LIBUVC_BACKEND)
 endif()
 
 pybind11_add_module(pybackend2 SHARED ${RAW_RS})
+
 include(libusb_config)
+
 if(USE_EXTERNAL_USB)
     add_dependencies(pybackend2 libusb)
 endif()
