@@ -69,7 +69,7 @@ namespace librealsense
         {
             for (auto&& usb : usb_enumerator::query_devices())
             {
-                if (info.unique_id == usb->get_info().unique_id)
+                if (info.id == usb->get_info().id)
                     return usb;
             }
             return nullptr;

@@ -108,4 +108,5 @@ target_sources(${LRS_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/stream.h"
         "${CMAKE_CURRENT_LIST_DIR}/sync.h"
         "${CMAKE_CURRENT_LIST_DIR}/types.h"
+        "${CMAKE_CURRENT_LIST_DIR}/command_transfer.h"
 )

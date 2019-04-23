@@ -115,27 +115,6 @@ namespace librealsense
         {
             return usb_device_bulk_transfer(_device->get_handle(), endpoint->get_address(), buffer,length, timeout_ms);
         }
-
-        std::vector<uint8_t> usb_messenger_usbhost::send_receive_transfer(std::vector<uint8_t> data, int timeout_ms)
-        {
-            auto hwm = _device->get_interfaces(USB_SUBCLASS_HWM)[0];
-            assert(hwm);
-            int transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_WRITE),
-                    data.data(), data.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            std::vector<uint8_t> output(HW_MONITOR_BUFFER_SIZE);
-            transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_READ),
-                    output.data(), output.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            output.resize(transfered_count);
-            return output;
-        }
     }
 }
 

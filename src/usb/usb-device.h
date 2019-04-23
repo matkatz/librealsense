@@ -14,18 +14,7 @@ namespace librealsense
 {
     namespace platform
     {
-        class command_transfer
-        {
-        public:
-            virtual std::vector<uint8_t> send_receive(
-                const std::vector<uint8_t>& data,
-                int timeout_ms = 5000,
-                bool require_response = true) = 0;
-
-            virtual ~command_transfer() = default;
-        };
-
-        class usb_device : public command_transfer
+        class usb_device
         {
         public:
             virtual ~usb_device() = default;
@@ -34,15 +23,6 @@ namespace librealsense
             virtual const rs_usb_interface get_interface(uint8_t interface_number) const = 0;
             virtual const std::vector<rs_usb_interface> get_interfaces(usb_subclass filter) const = 0;
             virtual const rs_usb_messenger open() = 0;
-
-            virtual std::vector<uint8_t> send_receive(
-                const std::vector<uint8_t>& data,
-                int timeout_ms = 5000,
-                bool require_response = true)
-            {
-                const auto& m = open();
-                return m->send_receive_transfer(data, timeout_ms);
-            }
         };
 
         typedef std::shared_ptr<usb_device> rs_usb_device;
@@ -56,14 +36,6 @@ namespace librealsense
             virtual const rs_usb_interface get_interface(uint8_t interface_number) const override { return nullptr; }
             virtual const std::vector<rs_usb_interface> get_interfaces(usb_subclass filter) const override { return std::vector<std::shared_ptr<usb_interface>>(); }
             virtual const rs_usb_messenger open() override { return nullptr; }
-
-            virtual std::vector<uint8_t> send_receive(
-                    const std::vector<uint8_t>& data,
-                    int timeout_ms = 5000,
-                    bool require_response = true) override
-            {
-                return std::vector<uint8_t>();
-            }
         };
     }
 }

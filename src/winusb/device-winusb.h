@@ -33,9 +33,9 @@ namespace librealsense
             virtual ~usb_device_winusb() {}
 
             virtual const usb_device_info get_info() const override { return _info; }
-            virtual const std::shared_ptr<usb_interface> get_interface(uint8_t interface_number) const override;
+            virtual const rs_usb_interface get_interface(uint8_t interface_number) const override;
             virtual const std::vector<std::shared_ptr<usb_interface>> get_interfaces(usb_subclass filter = USB_SUBCLASS_ANY) const override;
-            virtual const std::shared_ptr<usb_messenger> open() override;            
+            virtual const rs_usb_messenger open() override;            
             
         private:
             void query_interfaces(std::shared_ptr<handle_winusb> handle, const std::wstring& path);

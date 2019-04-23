@@ -67,30 +67,5 @@ namespace librealsense
             auto rv = libusb_bulk_transfer(h, endpoint->get_address(), buffer, length, &actual_length, timeout_ms);
             return rv == 0 ? actual_length : rv;
         }
-
-        std::vector<uint8_t> usb_messenger_libusb::send_receive_transfer(std::vector<uint8_t> data, int timeout_ms)
-        {
-            auto intfs = _device->get_interfaces(USB_SUBCLASS_HWM);
-            if(intfs.size() == 0)
-                throw std::runtime_error("can't find HWM interface");
-
-            auto hwm = intfs[0];
-
-            int transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_WRITE),
-                                                 data.data(), data.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            std::vector<uint8_t> output(HW_MONITOR_BUFFER_SIZE);
-            transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_READ),
-                                             output.data(), output.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            output.resize(transfered_count);
-            return output;
-        }
     }
 }

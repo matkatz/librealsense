@@ -993,7 +993,8 @@ namespace librealsense
         {
             return _owner->try_record([&](recording* rec, lookup_key k)
             {
-                auto result = _source->send_receive(data, timeout_ms, require_response);
+                command_transfer_usb ctu(_source);
+                auto result = ctu.send_receive(data, timeout_ms, require_response);
 
                 auto&& c = rec->add_call(k);
                 c.param1 = rec->save_blob((void*)data.data(), static_cast<int>(data.size()));
@@ -1059,7 +1060,7 @@ namespace librealsense
             return try_record([&](recording* rec, lookup_key k)
             {
                 auto dev = _source->create_usb_device(info);
-
+                
                 auto id = _entity_count.fetch_add(1);
                 auto&& c = rec->add_call(k);
                 c.param1 = id;

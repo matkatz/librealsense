@@ -95,24 +95,6 @@ namespace librealsense
             return length_transfered;
         }
 
-        std::vector<uint8_t> usb_messenger_winusb::send_receive_transfer(std::vector<uint8_t> data, int timeout_ms)
-        {
-            auto hwm = _device->get_interfaces(USB_SUBCLASS_HWM)[0];
-            int transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_WRITE), data.data(), data.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            std::vector<uint8_t> output(1024);
-            transfered_count = bulk_transfer(hwm->first_endpoint(USB_ENDPOINT_DIRECTION_READ), output.data(), output.size(), timeout_ms);
-
-            if (transfered_count < 0)
-                throw std::runtime_error("USB command timed-out!");
-
-            output.resize(transfered_count);
-            return output;
-        }
-
         void usb_messenger_winusb::set_timeout_policy(WINUSB_INTERFACE_HANDLE handle, uint8_t endpoint, uint32_t timeout_ms)
         {
             // WinUsb_SetPipePolicy function sets the policy for a specific pipe associated with an endpoint on the device

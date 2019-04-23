@@ -5,6 +5,8 @@
 
 #include "sensor.h"
 #include <mutex>
+#include "usb/usb-device.h"
+#include "command_transfer.h"
 
 namespace librealsense
 {
@@ -195,8 +197,14 @@ namespace librealsense
     public:
         locked_transfer(std::shared_ptr<platform::command_transfer> command_transfer, uvc_sensor& uvc_ep)
             :_command_transfer(command_transfer),
-             _uvc_sensor_base(uvc_ep)
+            _uvc_sensor_base(uvc_ep)
         {}
+
+        locked_transfer(platform::rs_usb_device dev, uvc_sensor& uvc_ep)
+            : _uvc_sensor_base(uvc_ep)
+        {
+            _command_transfer = std::make_shared<platform::command_transfer_usb>(dev);
+        }
 
         std::vector<uint8_t> send_receive(
             const std::vector<uint8_t>& data,
