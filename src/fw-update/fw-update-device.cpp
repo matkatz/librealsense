@@ -78,18 +78,26 @@ struct dfu_status_payload {
     rs2_dfu_status get_status() { return static_cast<rs2_dfu_status>(bStatus); }
 };
 
+struct serial_number_data
+{
+    uint8_t serial[6];
+    uint8_t spare[2];
+};
+
+struct dfu_fw_status_payload
+{
+    uint32_t spare1;
+    uint32_t fw_last_version;
+    uint32_t fw_highest_version;
+    uint16_t fw_download_status;
+    uint16_t dfu_is_locked;
+    uint16_t dfu_version;
+    serial_number_data serial_number;
+    uint8_t spare2[42];
+};
+
 namespace librealsense
 {
-    fw_update_device::fw_update_device(std::shared_ptr<context> ctx, bool register_device_notifications, std::shared_ptr<platform::usb_device> usb_device) : _context(ctx), _usb_device(usb_device)
-    {
-
-    }
-
-    fw_update_device::~fw_update_device()
-    {
-
-    }
-
     rs2_dfu_state get_dfu_state(std::shared_ptr<platform::usb_messenger> messenger)
     {
         uint8_t state = RS2_DFU_STATE_DFU_ERROR;
@@ -130,7 +138,7 @@ namespace librealsense
         return false;
     }
 
-    void fw_update_device::update_fw(const void* fw_image, int fw_image_size, fw_update_progress_callback_ptr update_progress_callback)
+    fw_update_device::fw_update_device(std::shared_ptr<context> ctx, bool register_device_notifications, std::shared_ptr<platform::usb_device> usb_device) : _context(ctx), _usb_device(usb_device)
     {
         auto messenger = _usb_device->open();
 
@@ -140,6 +148,25 @@ namespace librealsense
 
         if (state != RS2_DFU_STATE_DFU_IDLE)
             throw std::runtime_error("failed to enter into dfu state");
+
+        dfu_fw_status_payload paylaod;
+        auto rv = messenger->control_transfer(0xa1, RS2_DFU_UPLOAD, 0, 0, reinterpret_cast<uint8_t*>(&paylaod), sizeof(paylaod), 10);
+
+        std::stringstream formattedBuffer;
+        for (auto i = 0; i < sizeof(paylaod.serial_number.serial); i++)
+            formattedBuffer << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(paylaod.serial_number.serial[i]);
+
+        _serial_number = formattedBuffer.str();
+    }
+
+    fw_update_device::~fw_update_device()
+    {
+
+    }
+
+    void fw_update_device::update_fw(const void* fw_image, int fw_image_size, fw_update_progress_callback_ptr update_progress_callback)
+    {
+        auto messenger = _usb_device->open();
 
         const size_t transfer_size = 1024;
 
@@ -258,11 +285,15 @@ namespace librealsense
 
     const std::string& fw_update_device::get_info(rs2_camera_info info) const
     {
-        throw std::runtime_error("get_info is not supported by fw_update_device");//TODO_MK support serial number
+        if (info == RS2_CAMERA_INFO_SERIAL_NUMBER)
+            return _serial_number;
+        throw std::runtime_error(std::string(rs2_camera_info_to_string(info)) + " is not supported by fw update device");
     }
 
     bool fw_update_device::supports_info(rs2_camera_info info) const
     {
+        if (info == RS2_CAMERA_INFO_SERIAL_NUMBER)
+            return true;
         return false;
     }
 

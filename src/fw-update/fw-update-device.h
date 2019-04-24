@@ -57,6 +57,7 @@ namespace librealsense
     private:
         std::shared_ptr<context> _context;
         std::shared_ptr<platform::usb_device> _usb_device;
+        std::string _serial_number;
     };
 
     MAP_EXTENSION(RS2_EXTENSION_FW_UPDATE_DEVICE, fw_update_device);

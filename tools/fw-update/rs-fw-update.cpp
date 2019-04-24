@@ -2,9 +2,9 @@
 // Copyright(c) 2015 Intel Corporation. All Rights Reserved.
 
 #include <librealsense2/rs.hpp>
-//#include "cmd_base.h"
 
 #include <vector>
+#include <map>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -41,6 +41,9 @@ bool try_update(rs2::context ctx, std::vector<uint8_t> fw_image)
     for (auto&& d : fwu_devs) 
     {
         auto fwu_dev = d.as<rs2::fw_update_device>();
+        if (!fwu_dev.supports(RS2_CAMERA_INFO_SERIAL_NUMBER))
+            continue;
+        auto sn = fwu_dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
         std::cout << std::endl << "FW update started" << std::endl << std::endl;
         fwu_dev.update_fw(fw_image, [&](const float progress)
         {
@@ -50,6 +53,35 @@ bool try_update(rs2::context ctx, std::vector<uint8_t> fw_image)
         return true;
     }
     return fwu_devs.size() > 0;
+}
+
+void list_devices(rs2::context ctx)
+{
+    auto devs = ctx.query_devices();
+    
+    std::cout << std::endl << devs.size() << " connected devices detected" << std::endl;
+
+    if (devs.size() == 0)
+        return;
+
+    std::cout << std::endl << "Connected devices:" << std::endl;
+
+    std::map<rs2_camera_info, std::string> camera_info;
+
+    int counter = 0;
+    for (auto&& d : devs)
+    {
+        for (int i = 0; i < RS2_CAMERA_INFO_COUNT; i++)
+        {
+            auto info = (rs2_camera_info)i;
+            camera_info[info] = d.supports(info) ? d.get_info(info) : "unknown";
+        }
+
+        std::cout << ++counter << ") " <<
+            "Name: " << camera_info[RS2_CAMERA_INFO_NAME] <<
+            ", Serial number: " << camera_info[RS2_CAMERA_INFO_SERIAL_NUMBER] <<
+            ", FW version: " << camera_info[RS2_CAMERA_INFO_FIRMWARE_VERSION] << std::endl;
+    }
 }
 
 int main(int argc, char** argv) try
@@ -64,18 +96,12 @@ int main(int argc, char** argv) try
 
     CmdLine cmd("librealsense rs-fw-update tool", ' ', RS2_API_VERSION_STR);
 
-    //SwitchArg help_arg("h", "help", "Get help");
+    SwitchArg list_devices_arg("l", "list_devices", "List all available devices");
     SwitchArg recover_arg("r", "recover", "Recover all connected deviced which are in recovery mode and update them to the default fw");
-    ValueArg<std::string> file_arg("f", "file", "Path to a fw image file to update", true, "", "string");
+    ValueArg<std::string> file_arg("f", "file", "Path to a fw image file to update", false, "", "string");
     ValueArg<std::string> serial_number_arg("s", "serial_number", "The serial number of the device to be update", false, "", "string");
 
-    //ValueArg serial_number_arg("s", "serial_number", "The serial number of the device to be update");
-
-
-    file_arg.forceRequired();
-    //serial_number_arg.forceRequired();
-
-    //cmd.add(help_arg);
+    cmd.add(list_devices_arg);
     cmd.add(recover_arg);
     cmd.add(file_arg);
     cmd.add(serial_number_arg);
@@ -86,20 +112,27 @@ int main(int argc, char** argv) try
     bool recovery_request = recover_arg.getValue();
 
     auto fw_file_path = file_arg.getValue();
-    std::cout << "update to FW:" << fw_file_path << std::endl << std::endl;
     fw_image = read_fw_file(fw_file_path);
+
+    if (list_devices_arg.isSet())
+    {
+        list_devices(ctx);
+        return EXIT_SUCCESS;
+    }
 
     if (serial_number_arg.isSet()) 
     {
         selected_serial_number = serial_number_arg.getValue();
-        std::cout << std::endl << "search for device with serial number: " << selected_serial_number << std::endl;
+        std::cout << std::endl << "Search for device with serial number: " << selected_serial_number << std::endl;
     }
 
-    if(!serial_number_arg.isSet() && !recover_arg.isSet())
+    if(!serial_number_arg.isSet() && !recover_arg.isSet() && !list_devices_arg.isSet())
     {
-        std::cout << std::endl << "either recovery or serial number must be selected" << std::endl << std::endl;
+        std::cout << std::endl << "Either recovery or serial number must be selected" << std::endl << std::endl;
         return EXIT_FAILURE;
     }
+
+    std::cout << std::endl << "Update to FW:" << fw_file_path << std::endl;
 
     ctx.set_devices_changed_callback([&](rs2::event_information& info)
     {

@@ -104,13 +104,10 @@ namespace librealsense
         {
             std::map<std::string, std::vector<std::wstring>> devices_path;
 
-            const std::vector<std::string> fw_update_devices = {
-                "{a5dcbf10-6530-11d2-901f-00c04fb951ed}"
-            };
-
             const std::vector<std::string> usb_interfaces = {
                 "{08090549-ce78-41dc-a0fb-1bd66694bb0c}",
-                "{175695CD-30D9-4F87-8BE3-5A8270F49A31}"
+                "{175695CD-30D9-4F87-8BE3-5A8270F49A31}",
+                "{a5dcbf10-6530-11d2-901f-00c04fb951ed}"
             };
 
             for (auto&& interface_id : usb_interfaces)
