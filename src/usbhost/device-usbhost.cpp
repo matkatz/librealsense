@@ -24,9 +24,10 @@ namespace librealsense
             usb_descriptor_iter it;
             ::usb_descriptor_iter_init(handle, &it);
             usb_descriptor_header *h = usb_descriptor_iter_next(&it);
+            librealsense::platform::usb_spec conn_spec;
             if (h != nullptr && h->bDescriptorType == USB_DT_DEVICE) {
                 usb_device_descriptor *device_descriptor = (usb_device_descriptor *) h;
-                _info.conn_spec = librealsense::platform::usb_spec(device_descriptor->bcdUSB);
+                conn_spec = librealsense::platform::usb_spec(device_descriptor->bcdUSB);
             }
 
             do {
@@ -40,16 +41,20 @@ namespace librealsense
                     auto id = *(usb_interface_descriptor *) h;
                     auto in = id.bInterfaceNumber;
                     _interfaces[in] = std::make_shared<usb_interface_usbhost>(id, it);
+                    if(id.bInterfaceSubClass != USB_SUBCLASS_CONTROL && id.bInterfaceSubClass != USB_SUBCLASS_HWM)
+                        continue;
+                    usb_device_info info{};
+                    info.vid = usb_device_get_vendor_id(_handle);
+                    info.pid = usb_device_get_product_id(_handle);
+                    info.id = std::string(usb_device_get_name(_handle));
+                    info.unique_id = std::string(usb_device_get_name(_handle));
+                    info.mi = in;
+                    info.conn_spec = conn_spec;
+                    _infos.push_back(info);
                 }
             } while (h != nullptr);
 
             _usb_device_descriptor = usb_device_get_device_descriptor(_handle);
-            _info.vid = usb_device_get_vendor_id(_handle);
-            _info.pid = usb_device_get_product_id(_handle);
-            _info.id = std::string(usb_device_get_name(_handle));
-            _info.unique_id = std::string(usb_device_get_name(_handle));
-//            _info.serial = std::string(usb_device_get_serial(_handle, 10));
-//            _desc_length = usb_device_get_descriptors_length(_handle);
         }
 
         void usb_device_usbhost::release()

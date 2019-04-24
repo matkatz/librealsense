@@ -69,17 +69,18 @@ namespace librealsense
             {
                 std::string path(device_path.begin(), device_path.end());
                 std::string device_guid;
-                uint16_t mi;
-                parse_usb_path_multiple_interface(_info.vid, _info.pid, mi, _info.unique_id, path, device_guid);
-                _info.id = _info.unique_id;
+                usb_device_info info;
+                parse_usb_path_multiple_interface(info.vid, info.pid, info.mi, info.unique_id, path, device_guid);
+                info.id = info.unique_id;
 
                 auto handle = std::make_shared<handle_winusb>(device_path);
 
                 query_interfaces(handle, device_path);
 
                 if (recovery)
-                    mi = 0;
-                _devices_path[mi] = device_path;
+                    info.mi = 0;
+                _devices_path[info.mi] = device_path;
+                _infos.push_back(info);
             }
         }
 

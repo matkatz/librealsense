@@ -15,6 +15,28 @@ namespace librealsense
 {
     namespace platform
     {
+        std::string get_usb_descriptors(libusb_device* usb_device)
+        {
+            auto usb_bus = std::to_string(libusb_get_bus_number(usb_device));
+
+            // As per the USB 3.0 specs, the current maximum limit for the depth is 7.
+            const auto max_usb_depth = 8;
+            uint8_t usb_ports[max_usb_depth] = {};
+            std::stringstream port_path;
+            auto port_count = libusb_get_port_numbers(usb_device, usb_ports, max_usb_depth);
+            auto usb_dev = std::to_string(libusb_get_device_address(usb_device));
+            auto speed = libusb_get_device_speed(usb_device);
+            libusb_device_descriptor dev_desc;
+            auto r= libusb_get_device_descriptor(usb_device,&dev_desc);
+
+            for (size_t i = 0; i < port_count; ++i)
+            {
+                port_path << std::to_string(usb_ports[i]) << (((i+1) < port_count)?".":"");
+            }
+
+            return usb_bus + "-" + port_path.str() + "-" + usb_dev;
+        }
+
         usb_device_libusb::usb_device_libusb(libusb_device* device, libusb_device_descriptor desc) :
             _device(device), _usb_device_descriptor(desc)
         {
@@ -27,21 +49,19 @@ namespace librealsense
                 {
                     auto inf = config->interface[i];
                     _interfaces[i] = std::make_shared<usb_interface_libusb>(inf);
+                    if(inf.altsetting->bInterfaceSubClass != USB_SUBCLASS_CONTROL && inf.altsetting->bInterfaceSubClass != USB_SUBCLASS_HWM)
+                        continue;
+                    usb_device_info info{};
+                    info.unique_id = get_usb_descriptors(device);
+                    info.conn_spec = usb_spec(desc.bcdUSB);
+                    info.vid = desc.idVendor;
+                    info.pid = desc.idProduct;
+                    info.mi = i;
+                    _infos.push_back(info);
                 }
 
                 libusb_free_config_descriptor(config);
             }
-
-            _info.conn_spec = usb_spec(desc.bcdUSB);
-            _info.vid = desc.idVendor;
-            _info.pid = desc.idProduct;
-            auto bus = libusb_get_bus_number(device);
-            auto port = libusb_get_port_number(device);
-            _info.unique_id = _info.id = std::to_string(bus) + "-" + std::to_string(port);
-            //_info.serial = std::string(usb_device_get_serial(_handle, 10));//TODO:MK
-            //_info.id = std::string(usb_device_get_name(_handle));
-            //_info.unique_id = std::string(usb_device_get_name(_handle));
-//            _desc_length = usb_device_get_descriptors_length(_handle);
         }
 
         void usb_device_libusb::release()

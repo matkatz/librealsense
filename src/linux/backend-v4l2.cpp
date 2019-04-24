@@ -1597,7 +1597,8 @@ namespace librealsense
             auto devices =  usb_enumerator::query_devices();
             for(auto&& dev : devices)
             {
-                results.push_back(dev->get_info());
+                auto infos = dev->get_subdevices_infos();
+                results.insert(results.end(), infos.begin(), infos.end());
             }
             return results;
         }
