@@ -70,7 +70,7 @@ namespace librealsense
             for (auto&& usb : usb_enumerator::query_devices())
             {
                 if (info.id == usb->get_info().id) {
-                    std::make_shared<platform::command_transfer_usb>(usb);
+                    return std::make_shared<platform::command_transfer_usb>(usb);
                 }
             }
             return nullptr;
@@ -82,7 +82,8 @@ namespace librealsense
 
             for (auto&& usb : usb_enumerator::query_devices())
             {
-                results.push_back(usb->get_info());
+                auto infos = usb->get_subdevices_infos();
+                results.insert(results.end(), infos.begin(), infos.end());
             }
 
             return results;
