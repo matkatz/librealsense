@@ -103,21 +103,6 @@ namespace librealsense
         }
     };
 
-    template<typename T>
-    struct _uint16_t_major_minor_version_reversed
-    {
-        T version_minor;
-        T version_major;
-        std::string ToString(const char *prefix) const
-        {
-            std::string str = "";
-            FW_APPEND_TO_STRING_POINT(str, Version_Major, TO_INT);
-            FW_APPEND_TO_STRING(str, Version_Minor, TO_INT);
-            return str;
-        }
-    };
-
-
     template<typename size_t LENGTH, typename size_t ACTUAL = LENGTH>
     struct serial
     {
@@ -130,17 +115,14 @@ namespace librealsense
 
         std::string to_hex_string() const
         {
-            char tmp[(LENGTH * 2) + 1];
-            char *ptr = tmp;
-            std::string str = "";
-            for (auto i : data) {
-                ptr += sprintf_s(ptr, 3, "%02x", i);
-            }
-            sprintf_s(ptr, 1, "\0");
-            str += tmp;
-            return str;
+            std::stringstream formattedBuffer;
+            for (auto i = 0; i < sizeof(data); i++)
+                formattedBuffer << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(data[i]);
+
+            return formattedBuffer.str();
         }
-        std::string to_ascii_string(const char *prefix) const
+
+        std::string to_ascii_string() const
         {
             std::string str = "";
             for (auto c : data) {
