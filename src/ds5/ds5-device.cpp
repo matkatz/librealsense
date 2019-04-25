@@ -21,6 +21,7 @@
 #include "environment.h"
 #include "ds5-color.h"
 #include "ds5-rolling-shutter.h"
+#include "ds5-gvd.h"
 
 #include "proc/decimation-filter.h"
 #include "proc/threshold.h"
@@ -381,6 +382,14 @@ namespace librealsense
                     get_depth_sensor()));
         }
 
+        rs_400_gvd gvd = {};        
+        _hw_monitor->get_gvd(sizeof(gvd), reinterpret_cast<unsigned char*>(&gvd), GVD);
+
+        auto asic_serial = gvd.AsicModuleSerial.to_hex_string();
+        auto optic_serial = gvd.OpticModuleSerial.to_hex_string();
+        auto fwv = gvd.FunctionalPayloadVersion.to_string();
+        _fw_version = firmware_version(fwv);
+
         // Define Left-to-Right extrinsics calculation (lazy)
         // Reference CS - Right-handed; positive [X,Y,Z] point to [Left,Up,Forward] accordingly.
         _left_right_extrinsics = std::make_shared<lazy<rs2_extrinsics>>([this]()
@@ -402,11 +411,10 @@ namespace librealsense
 
         auto pid = group.uvc_devices.front().pid;
         std::string device_name = (rs400_sku_names.end() != rs400_sku_names.find(pid)) ? rs400_sku_names.at(pid) : "RS4xx";
-        _fw_version = firmware_version(_hw_monitor->get_firmware_version_string(GVD, camera_fw_version_offset));
         _recommended_fw_version = firmware_version("5.10.3.0");
         if (_fw_version >= firmware_version("5.10.4.0"))
             _device_capabilities = parse_device_capabilities();
-        auto serial = _hw_monitor->get_module_serial_string(GVD, module_serial_offset);
+
 
         auto& depth_ep = get_depth_sensor();
         auto advanced_mode = is_camera_in_advanced_mode();
@@ -587,7 +595,8 @@ namespace librealsense
         depth_ep.register_metadata((rs2_frame_metadata_value)RS2_FRAME_METADATA_ACTUAL_FPS,  std::make_shared<ds5_md_attribute_actual_fps> ());
 
         register_info(RS2_CAMERA_INFO_NAME, device_name);
-        register_info(RS2_CAMERA_INFO_SERIAL_NUMBER, serial);
+        register_info(RS2_CAMERA_INFO_SERIAL_NUMBER, asic_serial);
+        register_info(RS2_CAMERA_INFO_OPTIC_SERIAL_NUMBER, optic_serial);
         register_info(RS2_CAMERA_INFO_FIRMWARE_VERSION, _fw_version);
         register_info(RS2_CAMERA_INFO_PHYSICAL_PORT, group.uvc_devices.front().device_path);
         register_info(RS2_CAMERA_INFO_DEBUG_OP_CODE, std::to_string(static_cast<int>(fw_cmd::GLD)));

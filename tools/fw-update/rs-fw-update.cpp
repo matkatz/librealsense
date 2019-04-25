@@ -35,15 +35,21 @@ std::vector<uint8_t> read_fw_file(std::string file_path)
     return rv;
 }
 
-bool try_update(rs2::context ctx, std::vector<uint8_t> fw_image)
+bool try_update(rs2::context ctx, std::vector<uint8_t> fw_image, std::string expected_serial_number)
 {
     auto fwu_devs = ctx.query_devices(RS2_PRODUCT_LINE_D400_RECOVERY);
     for (auto&& d : fwu_devs) 
     {
         auto fwu_dev = d.as<rs2::fw_update_device>();
-        if (!fwu_dev.supports(RS2_CAMERA_INFO_SERIAL_NUMBER))
-            continue;
-        auto sn = fwu_dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+        if (expected_serial_number != "recovery")
+        {
+            if (!fwu_dev.supports(RS2_CAMERA_INFO_SERIAL_NUMBER))
+                continue;
+            auto sn = fwu_dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+            if (sn != expected_serial_number)
+                continue;
+        }
+
         std::cout << std::endl << "FW update started" << std::endl << std::endl;
         fwu_dev.update_fw(fw_image, [&](const float progress)
         {
@@ -165,7 +171,7 @@ int main(int argc, char** argv) try
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         if(retries > 0)
-            done = try_update(ctx, fw_image);
+            done = try_update(ctx, fw_image, selected_serial_number);
     }
 
     std::unique_lock<std::mutex> lk(mutex);
@@ -174,7 +180,7 @@ int main(int argc, char** argv) try
     if (recover_arg.isSet())
     {
         std::cout << std::endl << "check for devices in recovery mode..." << std::endl;
-        if (try_update(ctx, fw_image))
+        if (try_update(ctx, fw_image, "recovery"))
         {
             std::cout << std::endl << "device recoverd" << std::endl;
             return EXIT_SUCCESS;

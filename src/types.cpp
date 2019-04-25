@@ -352,6 +352,7 @@ namespace librealsense
             CASE(PRODUCT_ID)
             CASE(CAMERA_LOCKED)
             CASE(USB_TYPE_DESCRIPTOR)
+            CASE(OPTIC_SERIAL_NUMBER)
         default: assert(!is_valid(value)); return UNKNOWN_VALUE;
         }
 #undef CASE

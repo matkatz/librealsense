@@ -23,6 +23,7 @@ target_sources(${LRS_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/ds5-motion.h"
         "${CMAKE_CURRENT_LIST_DIR}/ds5-rolling-shutter.h"
         "${CMAKE_CURRENT_LIST_DIR}/ds5-color.h"
+        "${CMAKE_CURRENT_LIST_DIR}/ds5-gvd.h"
         "${CMAKE_CURRENT_LIST_DIR}/advanced_mode/json_loader.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/advanced_mode/presets.h"
 )
