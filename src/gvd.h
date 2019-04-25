@@ -43,13 +43,13 @@ namespace librealsense
         std::string ToString() const
         {
             std::string str = "";
-            FW_APPEND_TO_STRING_POINT(str, Version_Major, TO_INT);
-            FW_APPEND_TO_STRING(str, Version_Minor, TO_INT);
+            FW_APPEND_TO_STRING_POINT(str, version_major, TO_INT);
+            FW_APPEND_TO_STRING(str, version_minor, TO_INT);
             return str;
         }
     };
 
-    template<typename T, typename size_t PADDING>
+    template<typename T, size_t PADDING>
     struct major_minor_version_padding : public major_minor_version<T>
     {
         uint8_t    padding[PADDING];
@@ -103,7 +103,7 @@ namespace librealsense
         }
     };
 
-    template<typename size_t LENGTH, typename size_t ACTUAL = LENGTH>
+    template<size_t LENGTH, size_t ACTUAL = LENGTH>
     struct serial
     {
         uint8_t data[LENGTH];
