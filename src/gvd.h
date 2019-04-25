@@ -108,9 +108,13 @@ namespace librealsense
     {
         uint8_t data[LENGTH];
 
-        std::string ToString() const
+        std::string to_string() const
         {
-            return mft_utils::ArrayToString(data, ACTUAL);
+            std::stringstream formattedBuffer;
+            for (auto i = 0; i < sizeof(data); i++)
+                formattedBuffer << data[i];
+
+            return formattedBuffer.str();
         }
 
         std::string to_hex_string() const
