@@ -384,6 +384,7 @@ namespace librealsense
 
         rs_400_gvd gvd = {};        
         _hw_monitor->get_gvd(sizeof(gvd), reinterpret_cast<unsigned char*>(&gvd), GVD);
+        _hw_monitor->get_gvd(sizeof(gvd), reinterpret_cast<unsigned char*>(&gvd), GVD);// TODO: avoid history mismatch
 
         auto asic_serial = gvd.AsicModuleSerial.to_hex_string();
         auto optic_serial = gvd.OpticModuleSerial.to_hex_string();
