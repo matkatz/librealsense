@@ -92,8 +92,9 @@ namespace librealsense
             {
                 for (auto&& id : query_by_interface(interface_id, L"8086"))
                 {
-                    std::string path(id.begin(), id.end());
-                    if (device->get_info().id == path)
+                    auto expected_id = get_camera_id(id.c_str());
+                    auto curr_id = device->get_info().id;
+                    if (curr_id == expected_id)
                         return true;
                 }
             }
