@@ -52,6 +52,7 @@ namespace librealsense
                     if(inf.altsetting->bInterfaceSubClass != USB_SUBCLASS_CONTROL && inf.altsetting->bInterfaceSubClass != USB_SUBCLASS_HWM)
                         continue;
                     usb_device_info info{};
+                    info.id = get_usb_descriptors(device);
                     info.unique_id = get_usb_descriptors(device);
                     info.conn_spec = usb_spec(desc.bcdUSB);
                     info.vid = desc.idVendor;

@@ -87,8 +87,50 @@ TEST_CASE("first_endpoints_direction", "[live][usb]")
 
         for (auto&& i : interfaces)
         {
-            i->first_endpoint(USB_ENDPOINT_DIRECTION_WRITE)->get_direction() == USB_ENDPOINT_DIRECTION_WRITE;
-            i->first_endpoint(USB_ENDPOINT_DIRECTION_READ)->get_direction() == USB_ENDPOINT_DIRECTION_READ;
+            auto w = i->first_endpoint(USB_ENDPOINT_DIRECTION_WRITE);
+            if(w)
+                REQUIRE(USB_ENDPOINT_DIRECTION_WRITE == w->get_direction());
+            auto r = i->first_endpoint(USB_ENDPOINT_DIRECTION_READ);
+            if(r)
+                REQUIRE(USB_ENDPOINT_DIRECTION_READ == r->get_direction());
+        }
+    }
+}
+
+TEST_CASE("query_controls", "[live][usb]")
+{
+    auto  devices = usb_enumerator::query_devices();
+    int device_counter = 0;
+    const int REQ_TYPE_GET = 0xa1;
+    const int UVC_GET_CUR = 129;
+    int ctrl = 11;
+    int unit = 3;
+    for (auto&& dev : devices)
+    {
+        auto m = dev->open();
+        std::vector<rs_usb_interface> interfaces = dev->get_interfaces(USB_SUBCLASS_CONTROL);
+
+        for (auto&& intf : interfaces)
+        {
+            //int control_transfer(
+            //int request_type,
+            //int request,
+            //int value,
+            //int index,
+            //uint8_t* buffer,
+            //uint32_t length,
+            //uint32_t timeout_ms);
+
+            uint8_t data;
+            auto sts = m->control_transfer(
+                        REQ_TYPE_GET,
+                        UVC_GET_CUR,
+                        ctrl << 8,
+                        unit << 8 | intf->get_number(),
+                        &data,
+                        1,
+                        1000);
+            REQUIRE(sts);
         }
     }
 }

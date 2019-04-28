@@ -53,7 +53,7 @@ namespace librealsense
 
         int usb_messenger_libusb::control_transfer(int request_type, int request, int value, int index, uint8_t* buffer, uint32_t length, uint32_t timeout_ms)
         {
-            handle_libusb handle(_device->get_device(), 0);
+            handle_libusb handle(_device->get_device(), index & 0xFF, timeout_ms);
             auto h = handle.get_handle();
             auto rv = libusb_control_transfer(h, request_type, request, value, index, buffer, length, timeout_ms);
             return rv;
