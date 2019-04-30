@@ -14,8 +14,6 @@ namespace librealsense
         usb_interface_libusb::usb_interface_libusb(libusb_interface intf) :
                  _desc(*intf.altsetting)
         {
-//            _configuration_descriptor = //TODO_MK copy interface descriptor
-
             for (int e = 0; e < _desc.bNumEndpoints; ++e)
             {
                 auto ep = _desc.endpoint[e];

@@ -23,7 +23,6 @@ namespace librealsense
 
             virtual uint8_t get_number() const override { return _info.bInterfaceNumber; }
             virtual usb_subclass get_subclass() const override { return usb_subclass(_info.bInterfaceSubClass); }
-            virtual const std::vector<uint8_t> get_configuration_descriptor() const override { return _descriptor; }
             virtual const std::vector<std::shared_ptr<usb_endpoint>> get_endpoints() const override { return _endpoints; }
             
             virtual const rs_usb_endpoint first_endpoint(endpoint_direction direction, endpoint_type type = USB_ENDPOINT_BULK) const override;
@@ -32,7 +31,6 @@ namespace librealsense
         private:
             std::wstring _device_path;
             USB_INTERFACE_DESCRIPTOR _info;
-            std::vector<uint8_t> _descriptor;
             std::vector<std::shared_ptr<usb_endpoint>> _endpoints;
             std::map<uint8_t, std::shared_ptr<usb_interface_winusb>> _interfaces;
         };

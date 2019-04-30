@@ -12,35 +12,6 @@ namespace librealsense
 {
     namespace platform
     {
-        std::vector<uint8_t> parse_blocks(const std::vector<uint8_t>& configuration_descriptor, int interface_number)
-        {
-            int begin_index = -1, end_index = configuration_descriptor.size();
-            for (int i = 0; i < configuration_descriptor.size();)
-            {
-                auto size = configuration_descriptor[i];
-                std::vector<uint8_t> sub(configuration_descriptor.begin() + i, configuration_descriptor.begin() + i + size);
-                if (sub[1] == USB_INTERFACE_DESCRIPTOR_TYPE)
-                {
-                    USB_INTERFACE_DESCRIPTOR desc;
-                    memcpy_s(&desc, sizeof(desc), sub.data(), sub.size());
-                    if (begin_index != -1)
-                    {
-                        end_index = i;
-                        break;
-                    }
-                    if (desc.bInterfaceNumber == interface_number)
-                    {
-                        begin_index = i;
-                    }
-                }
-                i += size;
-            }
-
-            std::vector<uint8_t> rv(configuration_descriptor.begin() + begin_index, configuration_descriptor.begin() + end_index);
-
-            return rv;
-        }
-
         usb_interface_winusb::usb_interface_winusb(WINUSB_INTERFACE_HANDLE handle, USB_INTERFACE_DESCRIPTOR info, const std::wstring& device_path) :
             _info(info), _device_path(device_path)
         {
@@ -58,8 +29,6 @@ namespace librealsense
             {
                 throw winapi_error("WinUsb action failed, last error: " + GetLastError());
             }
-
-            _descriptor = parse_blocks(config, info.bInterfaceNumber);
 
             for (int i = 0; i < info.bNumEndpoints; i++) {
                 WINUSB_PIPE_INFORMATION pipeInformation;

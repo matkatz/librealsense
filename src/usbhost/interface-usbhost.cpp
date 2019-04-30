@@ -18,8 +18,6 @@ namespace librealsense
         usb_interface_usbhost::usb_interface_usbhost(::usb_interface_descriptor desc, ::usb_descriptor_iter it) :
                 _desc(desc)
         {
-//            _configuration_descriptor = //TODO_MK copy interface descriptor
-
             for (int e = 0; e < desc.bNumEndpoints;) {
                 usb_descriptor_header *h = usb_descriptor_iter_next(&it);
                 if (h->bDescriptorType == (USB_DT_ENDPOINT & ~USB_TYPE_MASK)) {
