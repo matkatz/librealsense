@@ -27,6 +27,11 @@ namespace librealsense
 
                     if(0 != libusb_open(device, &_handle))
                         continue;
+
+                    auto sts = libusb_detach_kernel_driver(_handle, _interface);
+                    if (sts != UVC_SUCCESS && sts != LIBUSB_ERROR_NOT_FOUND && sts != LIBUSB_ERROR_NOT_SUPPORTED)
+                        break;
+
                     if(0 != libusb_claim_interface(_handle, _interface))
                         continue;
                     return;
@@ -38,6 +43,7 @@ namespace librealsense
 
             ~handle_libusb()
             {
+                libusb_release_interface(_handle, _interface);
                 libusb_close(_handle);
             }
 
