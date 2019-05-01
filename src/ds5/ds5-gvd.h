@@ -9,6 +9,7 @@ namespace librealsense
 {
     namespace ds
     {
+#pragma pack(1)
         typedef struct _rs_400_gvd
         {
             number<uint16_t>  StructureSize;
@@ -128,5 +129,6 @@ namespace librealsense
             number<uint8_t>   eepromLockStatus;
             uint8_t padding54;
         }rs_400_gvd;
+#pragma pack(pop)
     }
 }
