@@ -24,16 +24,19 @@
 
 #pragma comment(lib, "winusb.lib")
 
+const std::vector<std::string> guids = {
+    "{175695CD-30D9-4F87-8BE3-5A8270F49A31}", //Ivcam
+    "{08090549-CE78-41DC-A0FB-1BD66694BB0C}", //D4xx
+    "{a5dcbf10-6530-11d2-901f-00c04fb951ed}"  //DFU
+};
+
 namespace librealsense
 {
     namespace platform
     {
-        std::vector<std::wstring> query_by_interface(const std::string& guidStr, std::wstring vid)
+        std::vector<std::wstring> query_by_interface(GUID guid, std::wstring vid)
         {
             std::vector<std::wstring> rv;
-            GUID guid;
-            std::wstring guidWStr(guidStr.begin(), guidStr.end());
-            CHECK_HR(CLSIDFromString(guidWStr.c_str(), static_cast<LPCLSID>(&guid)));
 
             CONFIGRET cr = CR_SUCCESS;
             ULONG length = 0;
@@ -63,6 +66,14 @@ namespace librealsense
             return rv;
         }
 
+        std::vector<std::wstring> query_by_interface(const std::string& guidStr, std::wstring vid)
+        {
+            GUID guid;
+            std::wstring guidWStr(guidStr.begin(), guidStr.end());
+            CHECK_HR(CLSIDFromString(guidWStr.c_str(), static_cast<LPCLSID>(&guid)));
+            return query_by_interface(guid, vid);
+        }
+
         std::string get_camera_id(const wchar_t* deviceID)
         {
             std::wsmatch matches;
@@ -82,15 +93,9 @@ namespace librealsense
 
         bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device> device)
         {
-            const std::vector<std::string> usb_interfaces = {
-                "{175695CD-30D9-4F87-8BE3-5A8270F49A31}",
-                "{08090549-CE78-41DC-A0FB-1BD66694BB0C}",
-                "{a5dcbf10-6530-11d2-901f-00c04fb951ed}"
-            };
-
-            for (auto&& interface_id : usb_interfaces)
+            for (auto&& guid : guids)
             {
-                for (auto&& id : query_by_interface(interface_id, L"8086"))
+                for (auto&& id : query_by_interface(guid, L"8086"))
                 {
                     auto expected_id = get_camera_id(id.c_str());
                     auto curr_id = device->get_info().id;
@@ -105,15 +110,9 @@ namespace librealsense
         {
             std::map<std::string, std::vector<std::wstring>> devices_path;
 
-            const std::vector<std::string> usb_interfaces = {
-                "{08090549-ce78-41dc-a0fb-1bd66694bb0c}",
-                "{175695CD-30D9-4F87-8BE3-5A8270F49A31}",
-                "{a5dcbf10-6530-11d2-901f-00c04fb951ed}"
-            };
-
-            for (auto&& interface_id : usb_interfaces)
+            for (auto&& guid : guids)
             {
-                for (auto&& id : query_by_interface(interface_id, L"8086"))
+                for (auto&& id : query_by_interface(guid, L"8086"))
                 {
                     try {
                         auto s = get_camera_id(id.c_str());
