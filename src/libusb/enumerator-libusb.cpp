@@ -28,6 +28,8 @@ namespace librealsense
 
         bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device> device)
         {
+            if (device == nullptr)
+                return false;
             std::vector<std::shared_ptr<usb_device>> rv;
             ssize_t count = 0;
             libusb_device **list = NULL;

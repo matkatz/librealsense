@@ -10,12 +10,8 @@ set (INTERNAL_TESTS_SOURCES
     internal-tests-usb.cpp
 )
 
-if(BUILD_GRAPHICAL_EXAMPLES)
-    add_executable(${PROJECT_NAME} ${INTERNAL_TESTS_SOURCES})
-    set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
-    target_link_libraries(${PROJECT_NAME} ${DEPENDENCIES})
-    include_directories(${PROJECT_NAME} ../ ../../src/)
-    set_target_properties (${PROJECT_NAME} PROPERTIES FOLDER "Unit-Tests")
-
-    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif()
+add_executable(${PROJECT_NAME} ${INTERNAL_TESTS_SOURCES})
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
+target_link_libraries(${PROJECT_NAME} ${DEPENDENCIES})
+include_directories(${PROJECT_NAME} ../ ../../src/)
+set_target_properties (${PROJECT_NAME} PROPERTIES FOLDER "Unit-Tests")

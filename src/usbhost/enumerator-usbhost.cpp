@@ -26,6 +26,8 @@ namespace librealsense
 
         bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device> device)
         {
+            if (device == nullptr)
+                return false;
             for(auto&& dev : _devices)
             {
                 if(dev->get_info().unique_id == device->get_info().unique_id)

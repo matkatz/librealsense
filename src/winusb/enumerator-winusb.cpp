@@ -93,6 +93,8 @@ namespace librealsense
 
         bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device> device)
         {
+            if (device == nullptr)
+                return false;
             for (auto&& guid : guids)
             {
                 for (auto&& id : query_by_interface(guid, L"8086"))

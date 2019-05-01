@@ -147,7 +147,6 @@ TEST_CASE("first_endpoints_direction", "[live][usb]")
     }
 }
 
-
 //control transfer test
 TEST_CASE("query_controls", "[live][usb]")
 {
@@ -220,6 +219,23 @@ TEST_CASE("query_controls", "[live][usb]")
     printf("===============================================================================\n");
 }
 
+std::vector<uint8_t> create_gvd_request_buffer(bool is_sr300)
+{
+    uint16_t header_size = 4;
+    uint16_t data_size = 20;
+    std::vector<uint8_t> rv(header_size + data_size);
+
+    uint32_t GVD = is_sr300 ? 0x3B : 0x10;
+
+    uint16_t IVCAM_MONITOR_MAGIC_NUMBER = 0xcdab;
+
+    memcpy(rv.data(), &data_size, sizeof(uint16_t));
+    memcpy(rv.data() + 2, &IVCAM_MONITOR_MAGIC_NUMBER, sizeof(uint16_t));
+    memcpy(rv.data() + 4, &GVD, sizeof(uint32_t));
+
+    return rv;
+}
+
 //bulk transfer test
 TEST_CASE("read_gvd", "[live][usb]")
 {
@@ -231,26 +247,19 @@ TEST_CASE("read_gvd", "[live][usb]")
     {
         command_transfer_usb ctu(dev);
 
-        uint16_t header_size = 4;
-        uint16_t data_size = 20;
-        std::vector<uint8_t> data(header_size + data_size);
+        bool is_sr300 = dev->get_info().pid == 0x0AA5 ? true : false;
+
         int timeout = 1000;
         bool require_response = true;
+        auto data = create_gvd_request_buffer(is_sr300);
 
-        bool is_sr300 = dev->get_info().pid == 0x0AA5 ? true : false;
-        uint32_t GVD = is_sr300 ? 0x3B : 0x10;
-        int fw_version_offset = is_sr300 ? 0 : 12;
-
-        uint16_t IVCAM_MONITOR_MAGIC_NUMBER = 0xcdab;
-
-        memcpy(data.data(), &data_size, sizeof(uint16_t));
-        memcpy(data.data() + 2, &IVCAM_MONITOR_MAGIC_NUMBER, sizeof(uint16_t));
-        memcpy(data.data() + 4, &GVD, sizeof(uint32_t));
         auto res = ctu.send_receive(data, timeout, require_response);
         REQUIRE(res.size());
 
-
         uint8_t fws[8];
+        uint16_t header_size = 4;
+        int fw_version_offset = is_sr300 ? 0 : 12;
+
         librealsense::copy(fws, res.data() + header_size + fw_version_offset, 8);
         std::string fw = to_string() << static_cast<int>(fws[3]) << "." << static_cast<int>(fws[2])
             << "." << static_cast<int>(fws[1]) << "." << static_cast<int>(fws[0]);
