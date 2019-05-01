@@ -86,7 +86,7 @@ TEST_CASE("query_devices", "[live][usb]")
             printf("\tmi: %d\n", subdevice_info.mi);
         }
     }
-    printf("\n\n");
+    printf("===============================================================================\n");
 }
 
 TEST_CASE("is_device_connected", "[live][usb]")
@@ -163,6 +163,8 @@ TEST_CASE("query_controls", "[live][usb]")
         uvc_req_code.at("UVC_GET_DEF")
     };
 
+    bool controls_found = false;
+
     for (auto&& dev : devices)
     {
         auto m = dev->open();
@@ -180,6 +182,7 @@ TEST_CASE("query_controls", "[live][usb]")
 
         for (auto&& intf : ctrl_interfaces)
         {
+            controls_found = true;
             auto unit = processing_units.at(intf->get_number());
 
             printf("interface: %d, processing unit: %d\n", intf->get_number(), unit);
@@ -212,7 +215,9 @@ TEST_CASE("query_controls", "[live][usb]")
             }
         }
     }
-    printf("\n\n");
+    if (!controls_found)
+        printf("There are no control interfaces available, force winusb/libuvc to probe controls\n");
+    printf("===============================================================================\n");
 }
 
 //bulk transfer test
@@ -220,6 +225,8 @@ TEST_CASE("read_gvd", "[live][usb]")
 {
     auto  devices = usb_enumerator::query_devices();
     int device_counter = 0;
+
+    printf("Devices FW version:\n");
     for (auto&& dev : devices)
     {
         command_transfer_usb ctu(dev);
@@ -230,7 +237,10 @@ TEST_CASE("read_gvd", "[live][usb]")
         int timeout = 1000;
         bool require_response = true;
 
-        uint32_t GVD = 0x10;
+        bool is_sr300 = dev->get_info().pid == 0x0AA5 ? true : false;
+        uint32_t GVD = is_sr300 ? 0x3B : 0x10;
+        int fw_version_offset = is_sr300 ? 0 : 12;
+
         uint16_t IVCAM_MONITOR_MAGIC_NUMBER = 0xcdab;
 
         memcpy(data.data(), &data_size, sizeof(uint16_t));
@@ -239,14 +249,13 @@ TEST_CASE("read_gvd", "[live][usb]")
         auto res = ctu.send_receive(data, timeout, require_response);
         REQUIRE(res.size());
 
-        int camera_fw_version_offset = 16;
 
         uint8_t fws[8];
-        librealsense::copy(fws, res.data() + camera_fw_version_offset, 8);
+        librealsense::copy(fws, res.data() + header_size + fw_version_offset, 8);
         std::string fw = to_string() << static_cast<int>(fws[3]) << "." << static_cast<int>(fws[2])
             << "." << static_cast<int>(fws[1]) << "." << static_cast<int>(fws[0]);
 
-        printf("fw: %s\n", fw.c_str());
+        printf("device: %s, fw: %s\n", dev->get_info().id.c_str(), fw.c_str());
     }
-    printf("\n\n");
+    printf("===============================================================================\n");
 }
