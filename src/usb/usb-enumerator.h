@@ -16,7 +16,7 @@ namespace librealsense
         {
         public:
             static std::vector<rs_usb_device> query_devices();
-            static bool is_device_connected(const rs_usb_device device);
+            static bool is_device_connected(const rs_usb_device& device);
         };
     }
 }

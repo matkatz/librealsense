@@ -91,7 +91,7 @@ namespace librealsense
             return std::string(wdevID.begin(), wdevID.end());
         }
 
-        bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device> device)
+        bool usb_enumerator::is_device_connected(const std::shared_ptr<usb_device>& device)
         {
             if (device == nullptr)
                 return false;
