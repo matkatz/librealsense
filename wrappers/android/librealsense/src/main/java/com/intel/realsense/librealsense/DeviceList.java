@@ -11,7 +11,7 @@ public class DeviceList extends LrsClass {
     }
 
     public Device createDevice(int index){
-        return new Device(nCreateDevice(mHandle, index));
+        return Device.create(nCreateDevice(mHandle, index));
     }
 
     public boolean containesDevice(Device device){

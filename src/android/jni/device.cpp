@@ -7,7 +7,7 @@
 #include "error.h"
 
 #include "../../../include/librealsense2/rs.h"
-
+#include "../../../common/parser.hpp"
 
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -59,5 +59,88 @@ Java_com_intel_realsense_librealsense_Device_nQuerySensors(JNIEnv *env, jclass t
     jlongArray rv = env->NewLongArray(sensors.size());
     env->SetLongArrayRegion(rv, 0, sensors.size(), reinterpret_cast<const jlong *>(sensors.data()));
     return rv;
+}
 
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_intel_realsense_librealsense_Device_nIsDeviceExtendableTo(JNIEnv *env, jclass type,
+                                                                   jlong handle, jint extension) {
+    rs2_error *e = NULL;
+    int rv = rs2_is_device_extendable_to(reinterpret_cast<const rs2_device *>(handle),
+                                         static_cast<rs2_extension>(extension), &e);
+    handle_error(env, e);
+    return rv;
+}
+
+std::vector<uint8_t> send_and_receive_raw_data(JNIEnv *env, rs2_device * dev, const std::vector<uint8_t>& input)
+{
+    std::vector<uint8_t> results;
+
+    rs2_error *e = NULL;
+    std::shared_ptr<const rs2_raw_data_buffer> list(
+            rs2_send_and_receive_raw_data(dev, (void*)input.data(), (uint32_t)input.size(), &e),
+            rs2_delete_raw_data);
+    handle_error(env, e);
+
+    auto size = rs2_get_raw_data_size(list.get(), &e);
+    handle_error(env, e);
+
+    auto start = rs2_get_raw_data(list.get(), &e);
+
+    results.insert(results.begin(), start, start + size);
+
+    return results;
+}
+
+std::string hex_mode(JNIEnv *env, rs2_device * dev, const std::string& line)
+{
+    std::vector<uint8_t> raw_data;
+    std::stringstream ss(line);
+    std::string word;
+    while (ss >> word)
+    {
+        std::stringstream converter;
+        int temp;
+        converter << std::hex << word;
+        converter >> temp;
+        raw_data.push_back(temp);
+    }
+    if (raw_data.empty())
+        throw std::runtime_error("Wrong input!");
+
+    auto result = send_and_receive_raw_data(env, dev, raw_data);
+
+    std::stringstream rv;
+    for (auto& elem : result)
+        rv << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(elem) << " ";
+
+    return rv.str();
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_intel_realsense_librealsense_DebugProtocol_nSendRawData(JNIEnv *env, jclass type,
+                                                                 jlong handle, jstring command_) {
+    const char *command = env->GetStringUTFChars(command_, 0);
+
+    const std::string &returnValue = hex_mode(env, reinterpret_cast<rs2_device *>(handle), command);
+
+    env->ReleaseStringUTFChars(command_, command);
+
+    return env->NewStringUTF(returnValue.c_str());
+}
+
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_intel_realsense_librealsense_DebugProtocol_nSendAndReceiveRawData(JNIEnv *env, jclass type,
+                                                                           jlong handle,
+                                                                           jbyteArray buffer_) {
+    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
+    jsize length = env->GetArrayLength(buffer_);
+    std::vector<uint8_t> buff(reinterpret_cast<uint8_t*>(buffer), reinterpret_cast<uint8_t*>(buffer) + length);
+    auto ret = send_and_receive_raw_data(env, reinterpret_cast<rs2_device *>(handle), buff);
+    env->ReleaseByteArrayElements(buffer_, buffer, 0);
+    jbyteArray rv = env->NewByteArray(ret.size());
+    env->SetByteArrayRegion (rv, 0, ret.size(), reinterpret_cast<const jbyte *>(ret.data()));
+    return rv;
 }

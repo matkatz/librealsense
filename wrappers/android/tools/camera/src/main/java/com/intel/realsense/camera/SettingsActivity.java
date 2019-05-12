@@ -33,7 +33,8 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "librs camera settings";
     private static final int INDEX_DEVICE_INFO = 0;
     private static final int INDEX_ADVANCE_MODE = 1;
-    private static final int INDEX_PRESETS = 2;
+    private static final int INDEX_TERMINAL = 2;
+    private static final int INDEX_PRESETS = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +68,7 @@ public class SettingsActivity extends AppCompatActivity {
         Map<Integer,String> settingsMap = new TreeMap<>();
         settingsMap.put(INDEX_DEVICE_INFO,"Device info");
         settingsMap.put(INDEX_ADVANCE_MODE,"Enable advanced mode");
+        settingsMap.put(INDEX_TERMINAL,"Open terminal");
 
         if(device.supportsInfo(CameraInfo.ADVANCED_MODE) && device.isInAdvancedMode()){
             settingsMap.put(INDEX_ADVANCE_MODE,"Disable advanced mode");
@@ -95,8 +97,13 @@ public class SettingsActivity extends AppCompatActivity {
                         startActivity(intent);
                         break;
                     }
-                        default:
-                            break;
+                    case INDEX_TERMINAL: {
+                        Intent intent = new Intent(SettingsActivity.this, TerminalActivity.class);
+                        startActivity(intent);
+                        break;
+                    }
+                    default:
+                        break;
                 }
             }
         });

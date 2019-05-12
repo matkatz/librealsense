@@ -5,8 +5,14 @@ import java.util.List;
 
 public class Device extends LrsClass {
 
-    public Device(long handle){
+    Device(long handle){
         mHandle = handle;
+    }
+
+    static Device create(long handle){
+        if(nIsDeviceExtendableTo(handle, Extension.DEBUG.value()))
+            return new DebugProtocol(handle);
+        return new Device(handle);
     }
 
     public List<Sensor> querySensors(){
@@ -42,6 +48,10 @@ public class Device extends LrsClass {
         return nSerializePresetToJson(mHandle);
     }
 
+    public <T extends Device> T as(Class<T> type) {
+        return (T) this;
+    }
+
     @Override
     public void close() {
         nRelease(mHandle);
@@ -51,6 +61,7 @@ public class Device extends LrsClass {
     private static native String nGetInfo(long handle, int info);
     private static native void nToggleAdvancedMode(long handle, boolean enable);
     private static native boolean nIsInAdvancedMode(long handle);
+    private static native boolean nIsDeviceExtendableTo(long handle, int extension);
     private static native void nLoadPresetFromJson(long handle, byte[] data);
     private static native byte[] nSerializePresetToJson(long handle);
     private static native long[] nQuerySensors(long handle);
