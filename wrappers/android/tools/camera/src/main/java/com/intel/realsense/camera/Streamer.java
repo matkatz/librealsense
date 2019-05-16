@@ -4,9 +4,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.intel.realsense.librealsense.CameraInfo;
 import com.intel.realsense.librealsense.Config;
+import com.intel.realsense.librealsense.DebugProtocol;
 import com.intel.realsense.librealsense.Device;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.FrameSet;
@@ -14,6 +16,7 @@ import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.RsContext;
 import com.intel.realsense.librealsense.VideoStreamProfile;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +33,7 @@ public class Streamer {
 
     private boolean mIsStreaming = false;
     private final Handler mHandler = new Handler();
+    private final Handler mFwLogHandler = new Handler();
     private final Listener mListener;
 
     private Pipeline mPipeline;
@@ -51,6 +55,37 @@ public class Streamer {
             }
             catch (Exception e) {
                 Log.e(TAG, "streaming, error: " + e.getMessage());
+            }
+        }
+    };
+
+    private Runnable mLogger = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                RsContext mRsContext = new RsContext();
+                DeviceList devices = mRsContext.queryDevices();
+                Device device = devices.createDevice(0);
+                DebugProtocol dp = device.as(DebugProtocol.class);
+                String strOpCode = device.getInfo(CameraInfo.DEBUG_OP_CODE);
+                byte opCode = Byte.parseByte(strOpCode);
+                byte[] buff = {0x14, 0x00, (byte) 0xab, (byte) 0xcd, opCode, 0x00, 0x00, 0x00,
+                        (byte) 0xf4, 0x01, 0x00, 0x00, 0x00,    0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x00, 0x00,    0x00, 0x00, 0x00};
+
+                byte[] res = dp.SendAndReceiveRawData(buff);
+
+                String strArray[] = new String[res.length];
+                for(int i = 0; i < res.length; i++)
+                    strArray[i] = String.valueOf((int)res[i]);
+
+                String newString = Arrays.toString(strArray);
+
+                Log.d(TAG, "fw_log: " + newString);
+                mFwLogHandler.post(mLogger);
+            }
+            catch (Exception e) {
+                Log.e(TAG, "logging, error: " + e.getMessage());
             }
         }
     };
@@ -103,8 +138,9 @@ public class Streamer {
             mPipeline = new Pipeline();
             Log.d(TAG, "try start streaming");
             configAndStart();
-            try(FrameSet frames = mPipeline.waitForFrames(15000)){} // w/a for l500
+            try(FrameSet frames = mPipeline.waitForFrames(3000)){} // w/a for l500
             mIsStreaming = true;
+            mFwLogHandler.post(mLogger);
             mHandler.post(mStreaming);
             Log.d(TAG, "streaming started successfully");
         } catch (Exception e) {
@@ -121,6 +157,7 @@ public class Streamer {
             Log.d(TAG, "try stop streaming");
             mIsStreaming = false;
             mHandler.removeCallbacks(mStreaming);
+            mFwLogHandler.removeCallbacks(mLogger);
             mPipeline.stop();
             mPipeline.close();
             Log.d(TAG, "streaming stopped successfully");
