@@ -289,7 +289,6 @@ namespace librealsense
                     DEVICE_NOTIFY_WINDOW_HANDLE);
                 if (data->hdevnotifyUVC == nullptr)
                 {
-                    UnregisterDeviceNotification(data->hdevnotifyHW);
                     LOG_WARNING("Register UVC events Failed!\n");
                     return FALSE;
                 }
@@ -305,7 +304,6 @@ namespace librealsense
                     DEVICE_NOTIFY_WINDOW_HANDLE);
                 if (data->hdevnotify_sensor == nullptr)
                 {
-                    UnregisterDeviceNotification(data->hdevnotify_sensor);
                     LOG_WARNING("Register UVC events Failed!\n");
                     return FALSE;
                 }
