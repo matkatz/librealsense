@@ -956,7 +956,8 @@ void stream_thread(winusb_uvc_stream_context *strctx)
             &transferred,
             NULL)) 
             {
-                printf("WinUsb_ReadPipe Error: %d\n" + GetLastError());
+				auto err = GetLastError();
+                printf("WinUsb_ReadPipe Error: %d\n" + err);
                 break;
             }
 
@@ -1024,6 +1025,13 @@ uvc_error_t winusb_uvc_stream_start(
     streamctx->iface = iface;
     streamctx->maxPayloadTransferSize = strmh->cur_ctrl.dwMaxPayloadTransferSize;
     strmh->user_ptr = user_ptr;
+
+	// WinUsb_SetPipePolicy function sets the policy for a specific pipe associated with an endpoint on the device
+	// PIPE_TRANSFER_TIMEOUT: Waits for a time-out interval before canceling the request
+	ULONG timeout_milliseconds = 1000;
+	if (WinUsb_SetPipePolicy(streamctx->stream->devh->associateHandle, streamctx->endpoint, PIPE_TRANSFER_TIMEOUT, sizeof(timeout_milliseconds), &timeout_milliseconds) == FALSE)
+		return UVC_ERROR_OTHER;
+
     strmh->cb_thread = std::thread(stream_thread, streamctx);
     strmh->user_cb = cb;
 
@@ -1798,7 +1806,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
         dwMemberIdx = 0;
 
         // Enumerates IVCAM device
-        SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &guid, dwMemberIdx, &DevIntfData);
+		SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &guid, dwMemberIdx, &DevIntfData);
 
         DevIntfDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(2048);
 
@@ -1807,7 +1815,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
             DevData.cbSize = sizeof(DevData);
 
             // Returns required buffer size for saving device interface details
-            SetupDiGetDeviceInterfaceDetail(hDevInfo, &DevIntfData, NULL, 0, &dwSize, NULL);
+			SetupDiGetDeviceInterfaceDetail(hDevInfo, &DevIntfData, NULL, 0, &dwSize, NULL);
 
             DevIntfDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
 
@@ -1864,8 +1872,8 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
                 else
                 {
                     auto error = GetLastError();
-                    printf("CreateFile failed - GetLastError = %d\n", GetLastError());
-                    ret = UVC_ERROR_INVALID_PARAM;
+					printf("CreateFile failed - GetLastError = %d\n", GetLastError());
+					ret = UVC_ERROR_INVALID_PARAM;
                 }
 
                 if (Devicehandle != INVALID_HANDLE_VALUE)
@@ -1880,7 +1888,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
             }
 
             // Continue looping on all connected IVCAM devices
-            SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &guid, ++dwMemberIdx, &DevIntfData);
+            SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &guid, ++dwMemberIdx, &DevIntfData);			
         }
 
         if (DevIntfDetailData != NULL)
