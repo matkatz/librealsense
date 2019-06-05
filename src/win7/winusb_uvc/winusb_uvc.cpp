@@ -15,6 +15,8 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <future>
+
 
 // Data structures for Backend-Frontend queue:
 struct frame;
@@ -1048,7 +1050,16 @@ uvc_error_t winusb_uvc_stream_stop(winusb_uvc_stream_handle_t *strmh)
         return UVC_ERROR_INVALID_PARAM;
 
     strmh->running = 0;
-    strmh->cb_thread.join();
+	// Terminate the thread.
+	auto future = std::async(std::launch::async, &std::thread::join, &strmh->cb_thread);
+	if (future.wait_for(std::chrono::seconds(5))
+		== std::future_status::timeout) {
+		/* --- Do something, if thread has not terminated within 5 s. --- */
+		std::cout << "Deadlock caught!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+		std::cout << "Deadlock caught!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+	}
+
+    //strmh->cb_thread.join();
 
     return UVC_SUCCESS;
 }
