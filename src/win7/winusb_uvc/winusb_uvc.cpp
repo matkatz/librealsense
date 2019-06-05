@@ -916,7 +916,7 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 void stream_thread(winusb_uvc_stream_context *strctx)
 {
     PUCHAR buffer = (PUCHAR)malloc(strctx->maxPayloadTransferSize);
-    memset(buffer, 0, sizeof(strctx->maxPayloadTransferSize));
+    memset(buffer, 0, strctx->maxPayloadTransferSize);
 
     frames_archive archive;
     std::atomic_bool keep_sending_callbacks = true;
@@ -2169,7 +2169,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 
     if (descriptors)
     {
-        delete descriptors;
+        delete[] descriptors;
         descriptors = NULL;
     }
 
@@ -2187,7 +2187,7 @@ fail:
 
     if (descriptors)
     {
-        delete descriptors;
+        delete[] descriptors;
     }
 
     if (device)
