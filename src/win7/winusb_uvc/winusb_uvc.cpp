@@ -1029,7 +1029,7 @@ uvc_error_t winusb_uvc_stream_start(
 	// WinUsb_SetPipePolicy function sets the policy for a specific pipe associated with an endpoint on the device
 	// PIPE_TRANSFER_TIMEOUT: Waits for a time-out interval before canceling the request
 	ULONG timeout_milliseconds = 1000;
-	if (WinUsb_SetPipePolicy(streamctx->stream->devh->associateHandle, streamctx->endpoint, PIPE_TRANSFER_TIMEOUT, sizeof(timeout_milliseconds), &timeout_milliseconds) == FALSE)
+	if (WinUsb_SetPipePolicy(streamctx->stream->stream_if->associateHandle, streamctx->endpoint, PIPE_TRANSFER_TIMEOUT, sizeof(timeout_milliseconds), &timeout_milliseconds) == FALSE)
 		return UVC_ERROR_OTHER;
 
     strmh->cb_thread = std::thread(stream_thread, streamctx);
