@@ -1046,18 +1046,19 @@ fail:
 
 uvc_error_t winusb_uvc_stream_stop(winusb_uvc_stream_handle_t *strmh)
 {
+	LOG_DEBUG(__FUNCTION__);
     if (!strmh->running)
         return UVC_ERROR_INVALID_PARAM;
 
     strmh->running = 0;
 	// Terminate the thread.
+	LOG_DEBUG(__FUNCTION__ << ": start joining streaming thread");
 	auto future = std::async(std::launch::async, &std::thread::join, &strmh->cb_thread);
-	if (future.wait_for(std::chrono::seconds(5))
-		== std::future_status::timeout) {
-		/* --- Do something, if thread has not terminated within 5 s. --- */
-		std::cout << "Deadlock caught!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-		std::cout << "Deadlock caught!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+	if (future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+	{
+		LOG_ERROR(__FUNCTION__ << ": app stall encountered");
 	}
+	LOG_DEBUG(__FUNCTION__ << ": streaming thread joined");
 
     //strmh->cb_thread.join();
 
