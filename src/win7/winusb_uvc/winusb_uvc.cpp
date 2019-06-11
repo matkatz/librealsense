@@ -851,7 +851,10 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 
 	/* ignore empty payload transfers */
 	if (payload_len == 0)
+	{
+		LOG_ERROR("Zero-size packet arrived, header size =" << header_len);
 		return;
+	}
 
 	/* Certain iSight cameras have strange behavior: They send header
 	* information in a packet with no image data, and then the following
@@ -937,11 +940,15 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 		}
 		//}
 	}
+	else
+	{
+		LOG_DEBUG("Partial frame arrived, expected = " << std::dec << strmh->cur_ctrl.dwMaxVideoFrameSize
+			<< ", actual = " << data_len);
+	}
 }
 
 void stream_thread(winusb_uvc_stream_context *strctx)
 {
-	LOG_DEBUG(__FUNCTION__);
 	PUCHAR buffer = (PUCHAR)malloc(strctx->maxPayloadTransferSize);
 	memset(buffer, 0, strctx->maxPayloadTransferSize);
 
