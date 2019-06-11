@@ -26,6 +26,7 @@ struct RealsenseHandle
         pipe.start(cfg);
         fprintf(log_file, "  Pipeline started\n");
 
+		pipe.wait_for_frames();
         model = pipe.get_active_profile().get_device().get_info(RS2_CAMERA_INFO_NAME);
         
         depth_scale = pipe.get_active_profile().get_device().first<rs2::depth_sensor>().get_depth_scale();
@@ -130,7 +131,7 @@ int main()
 {
     setbuf(stdout, NULL); // disable buffering
     rs2::log_to_file(RS2_LOG_SEVERITY_DEBUG, "rs_log.txt");
-
+	//rs2::log_to_console(RS2_LOG_SEVERITY_DEBUG);
     std::chrono::seconds interval{5};
 
     open_log();

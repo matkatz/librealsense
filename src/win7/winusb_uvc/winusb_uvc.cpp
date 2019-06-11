@@ -975,7 +975,7 @@ void stream_thread(winusb_uvc_stream_context *strctx)
 	});
 
 	do {
-		DWORD transferred;
+		DWORD transferred{};
 		if (!WinUsb_ReadPipe(strctx->stream->stream_if->associateHandle,
 			strctx->endpoint,
 			buffer,
@@ -984,7 +984,7 @@ void stream_thread(winusb_uvc_stream_context *strctx)
 			NULL))
 		{
 			auto err = GetLastError();
-			printf("WinUsb_ReadPipe Error: %d\n" + err);
+			LOG_ERROR("WinUsb_ReadPipe Error: " << err);
 			break;
 		}
 
@@ -1058,7 +1058,7 @@ uvc_error_t winusb_uvc_stream_start(
 
 	// WinUsb_SetPipePolicy function sets the policy for a specific pipe associated with an endpoint on the device
 	// PIPE_TRANSFER_TIMEOUT: Waits for a time-out interval before canceling the request
-	ULONG timeout_milliseconds = 1000;
+	ULONG timeout_milliseconds = 5000;
 	if (WinUsb_SetPipePolicy(streamctx->stream->stream_if->associateHandle, streamctx->endpoint, PIPE_TRANSFER_TIMEOUT, sizeof(timeout_milliseconds), &timeout_milliseconds) == FALSE)
 		return UVC_ERROR_OTHER;
 
