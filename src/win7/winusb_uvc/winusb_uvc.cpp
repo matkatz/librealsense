@@ -5,7 +5,9 @@
 
 #ifdef RS2_USE_WINUSB_UVC_BACKEND
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include "windows.h"
 #include "SETUPAPI.H"
 #include "winusb_uvc.h"
@@ -643,7 +645,6 @@ uvc_error_t winusb_uvc_parse_vs(
 	return ret;
 }
 uvc_error_t update_stream_if_handle(winusb_uvc_device *devh, int interface_idx) {
-	LOG_DEBUG(__FUNCTION__);
 	winusb_uvc_streaming_interface_t *stream_if;
 
 	DL_FOREACH(devh->deviceData.stream_ifs, stream_if) {
@@ -768,7 +769,6 @@ uvc_error_t winusb_get_available_formats_all(winusb_uvc_device *devh, uvc_format
 }
 
 uvc_error_t winusb_free_formats(uvc_format_t *formats) {
-	LOG_DEBUG(__FUNCTION__);
 	uvc_format_t *cur_format = formats;
 	while (cur_format != NULL) {
 		uvc_format_t *format = cur_format;
@@ -867,7 +867,7 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 	header_len = payload[0];
 	if (header_len > payload_len)
 	{
-		printf("bogus packet: actual_len=%zd, header_len=%d\n", payload_len, header_len);
+		LOG_ERROR("bogus packet: actual_len= " << std::dec << " , header_len=" << header_len);
 		return;
 	}
 	else
@@ -887,7 +887,7 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 		header_info = payload[1];
 
 		if (header_info & 0x40) {
-			printf("bad packet: error bit set");
+			LOG_ERROR("bad packet: error bit set [header info=" << std::hex << header_info << std::dec << "]");
 			return;
 		}
 
@@ -895,9 +895,8 @@ void winusb_uvc_process_payload(winusb_uvc_stream_handle_t *strmh,
 			/* The frame ID bit was flipped, but we have image data sitting
 			around from prior transfers. This means the camera didn't send
 			an EOF for the last transfer of the previous frame. */
-			printf("complete buffer : length %zd\n", strmh->got_bytes);
+			LOG_DEBUG("complete buffer : length: " << strmh->got_bytes);
 			winusb_uvc_swap_buffers(strmh);
-
 		}
 
 		strmh->fid = header_info & 1;
@@ -995,7 +994,7 @@ void stream_thread(winusb_uvc_stream_context *strctx)
 			break;
 		}
 
-		LOG_DEBUG("Packet received with size " << transferred);
+		//LOG_DEBUG("Packet received with size " << std::dec << transferred);
 		winusb_uvc_process_payload(strctx->stream, buffer, transferred, &archive, &queue);
 	} while (strctx->stream->running);
 
@@ -1020,7 +1019,6 @@ uvc_error_t winusb_uvc_stream_start(
 	void *user_ptr,
 	uint8_t flags
 ) {
-	LOG_DEBUG(__FUNCTION__);
 	/* USB interface we'll be using */
 	winusb_uvc_interface *iface;
 	int interface_id;
@@ -1102,8 +1100,6 @@ uvc_error_t winusb_uvc_stream_stop(winusb_uvc_stream_handle_t *strmh)
 
 void winusb_uvc_stream_close(winusb_uvc_stream_handle_t *strmh)
 {
-	LOG_DEBUG(__FUNCTION__);
-
 	if (strmh->running)
 	{
 		winusb_uvc_stream_stop(strmh);
@@ -1645,8 +1641,7 @@ void poll_interrupts(WINUSB_INTERFACE_HANDLE handle, int ep, uint16_t timeout)
 			lastError = GetLastError();
 			if (lastError == ERROR_OPERATION_ABORTED)
 			{
-				perror("receiving interrupt_ep bytes failed");
-				fprintf(stderr, "Error receiving message.\n");
+				LOG_ERROR(__FUNCTION__ << " : Read interrupt_ep bytes failed. err=" << GetLastError());
 			}
 			if (!sts)
 				return;
@@ -1654,8 +1649,7 @@ void poll_interrupts(WINUSB_INTERFACE_HANDLE handle, int ep, uint16_t timeout)
 		else
 		{
 			WinUsb_ResetPipe(handle, ep);
-			perror("receiving interrupt_ep bytes failed");
-			fprintf(stderr, "Error receiving message.\n");
+			LOG_ERROR(__FUNCTION__ << " : Read interrupt_ep bytes failed. err=" << GetLastError());
 			return;
 		}
 
@@ -1891,7 +1885,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
 						// Returns IVCAM device descriptor which includes PID/VID info
 						if (!WinUsb_GetDescriptor(winusbHandle, USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, (PUCHAR)&deviceDescriptor, sizeof(USB_DEVICE_DESCRIPTOR), &returnLength))
 						{
-							printf("WinUsb_GetDescriptor failed - GetLastError = %d\n", GetLastError());
+							LOG_ERROR("WinUsb_GetDescriptor failed - GetLastError = " << GetLastError());
 							ret = UVC_ERROR_INVALID_PARAM;
 						}
 						else
@@ -1918,14 +1912,14 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
 					}
 					else
 					{
-						printf("WinUsb_Initialize failed - GetLastError = %d\n", GetLastError());
+						LOG_ERROR("WinUsb_Initialize failed - GetLastError = " << GetLastError());
 						ret = UVC_ERROR_INVALID_PARAM;
 					}
 				}
 				else
 				{
 					auto error = GetLastError();
-					printf("CreateFile failed - GetLastError = %d\n", GetLastError());
+					LOG_ERROR("CreateFile failed - GetLastError = " << GetLastError());
 					ret = UVC_ERROR_INVALID_PARAM;
 				}
 
@@ -1936,7 +1930,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
 			}
 			else
 			{
-				printf("SetupDiGetDeviceInterfaceDetail failed - GetLastError = %d\n", GetLastError());
+				LOG_ERROR("SetupDiGetDeviceInterfaceDetail failed - GetLastError = " << GetLastError());
 				ret = UVC_ERROR_INVALID_PARAM;
 			}
 
@@ -1956,7 +1950,7 @@ uvc_error_t winusb_find_devices(const std::string &uvc_interface, int vid, int p
 	}
 	else
 	{
-		printf("SetupDiGetClassDevs failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("SetupDiGetClassDevs failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 	}
 
@@ -2031,7 +2025,7 @@ uvc_error_t winusb_find_devices(winusb_uvc_device ***devs, int vid, int pid)
 						// Returns IVCAM device descriptor which includes PID/VID info
 						if (!WinUsb_GetDescriptor(winusbHandle, USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, (PUCHAR)&deviceDescriptor, sizeof(USB_DEVICE_DESCRIPTOR), &returnLength))
 						{
-							printf("WinUsb_GetDescriptor failed - GetLastError = %d\n", GetLastError());
+							LOG_ERROR("WinUsb_GetDescriptor failed - GetLastError = " << GetLastError());
 							ret = UVC_ERROR_INVALID_PARAM;
 						}
 						else
@@ -2059,13 +2053,13 @@ uvc_error_t winusb_find_devices(winusb_uvc_device ***devs, int vid, int pid)
 					}
 					else
 					{
-						printf("WinUsb_Initialize failed - GetLastError = %d\n", GetLastError());
+						LOG_ERROR("WinUsb_Initialize failed - GetLastError = " << GetLastError());
 						ret = UVC_ERROR_INVALID_PARAM;
 					}
 				}
 				else
 				{
-					printf("CreateFile failed - GetLastError = %d\n", GetLastError());
+					LOG_ERROR("CreateFile failed - GetLastError = " << GetLastError());
 					ret = UVC_ERROR_INVALID_PARAM;
 				}
 
@@ -2076,7 +2070,7 @@ uvc_error_t winusb_find_devices(winusb_uvc_device ***devs, int vid, int pid)
 			}
 			else
 			{
-				printf("SetupDiGetDeviceInterfaceDetail failed - GetLastError = %d\n", GetLastError());
+				LOG_ERROR("SetupDiGetDeviceInterfaceDetail failed - GetLastError = " << GetLastError());
 				ret = UVC_ERROR_INVALID_PARAM;
 			}
 
@@ -2095,7 +2089,7 @@ uvc_error_t winusb_find_devices(winusb_uvc_device ***devs, int vid, int pid)
 	}
 	else
 	{
-		printf("SetupDiGetClassDevs failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("SetupDiGetClassDevs failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 	}
 
@@ -2184,7 +2178,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 
 	if (device->deviceHandle == INVALID_HANDLE_VALUE)
 	{
-		printf("CreateFile failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("CreateFile failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 		goto fail;
 	}
@@ -2192,7 +2186,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 	// Create WinUSB device handle for the IVCAM device
 	if (!WinUsb_Initialize(device->deviceHandle, &device->winusbHandle))
 	{
-		printf("WinUsb_Initialize failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("WinUsb_Initialize failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 		goto fail;
 	}
@@ -2201,6 +2195,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 	if (!WinUsb_GetDescriptor(device->winusbHandle, USB_CONFIGURATION_DESCRIPTOR_TYPE, 0, 0, (PUCHAR)&cfgDesc, sizeof(cfgDesc), &returnLength))
 	{
 		printf("WinUsb_GetDescriptor failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("WinUsb_GetDescriptor failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 		goto fail;
 	}
@@ -2210,7 +2205,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 	// Returns IVCAM configuration descriptor - including all interface, endpoint, class-specific, and vendor-specific descriptors
 	if (!WinUsb_GetDescriptor(device->winusbHandle, USB_CONFIGURATION_DESCRIPTOR_TYPE, 0, 0, descriptors, cfgDesc.wTotalLength, &returnLength))
 	{
-		printf("WinUsb_GetDescriptor failed - GetLastError = %d\n", GetLastError());
+		LOG_ERROR("WinUsb_GetDescriptor failed - GetLastError = " << GetLastError());
 		ret = UVC_ERROR_INVALID_PARAM;
 		goto fail;
 	}
@@ -2230,7 +2225,7 @@ uvc_error_t winusb_open(winusb_uvc_device *device)
 	ret = winusb_uvc_scan_control(device, &device->deviceData);
 	if (ret != UVC_SUCCESS)
 	{
-		printf("uvc_scan_control failed\n");
+		LOG_ERROR("uvc_scan_control failed\n");
 		goto fail;
 	}
 
@@ -2292,7 +2287,7 @@ uvc_error_t winusb_close(winusb_uvc_device *device)
 	}
 	else
 	{
-		printf("Error: device == NULL\n");
+		LOG_ERROR("Error: device == NULL");
 		ret = UVC_ERROR_NO_DEVICE;
 	}
 
@@ -2323,10 +2318,10 @@ bool read_all_uvc_descriptors(winusb_uvc_device *device, PUCHAR buffer, ULONG bu
 		2048,
 		&returnLength))
 	{
-		printf("GetLastError = %d\n", GetLastError());
+		LOG_ERROR("GetLastError = " << GetLastError());
 	}
 
-	printf("success");
+	LOG_DEBUG(__FUNCTION__ << ": success");
 
 	return 0;
 }

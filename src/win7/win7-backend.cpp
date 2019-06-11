@@ -27,16 +27,10 @@ namespace librealsense
 {
     namespace platform
     {
-        win7_backend::win7_backend()
-        {
-			LOG_DEBUG(__FUNCTION__);
-
-        }
+        win7_backend::win7_backend(){}
 
         win7_backend::~win7_backend()
         {
-			LOG_DEBUG(__FUNCTION__);
-
             try {
 
             }
@@ -48,22 +42,16 @@ namespace librealsense
 
         std::shared_ptr<uvc_device> win7_backend::create_uvc_device(uvc_device_info info) const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             return std::make_shared<retry_controls_work_around>(std::make_shared<win7_uvc_device>(info, shared_from_this()));
         }
 
         std::shared_ptr<backend> create_backend()
         {
-			LOG_DEBUG(__FUNCTION__);
-
             return std::make_shared<win7_backend>();
         }
 
         std::vector<uvc_device_info> win7_backend::query_uvc_devices() const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             std::vector<uvc_device_info> devices;
 
             auto action = [&devices](const uvc_device_info& info)
@@ -78,15 +66,11 @@ namespace librealsense
 
         std::shared_ptr<usb_device> win7_backend::create_usb_device(usb_device_info info) const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             return std::make_shared<winusb_bulk_transfer>(info);
         }
 
         std::vector<usb_device_info> win7_backend::query_usb_devices() const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             const std::vector<std::string> usb_interfaces = {
                 "{175695CD-30D9-4F87-8BE3-5A8270F49A31}",
                 "{08090549-CE78-41DC-A0FB-1BD66694BB0C}"
@@ -112,15 +96,11 @@ namespace librealsense
 
         std::shared_ptr<hid_device> win7_backend::create_hid_device(hid_device_info info) const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             throw std::runtime_error("create_hid_device Not supported");
         }
 
         std::vector<hid_device_info> win7_backend::query_hid_devices() const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             std::vector<hid_device_info> devices;
             // Not supported 
             return devices;
@@ -128,8 +108,6 @@ namespace librealsense
 
         std::shared_ptr<time_service> win7_backend::create_time_service() const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             return std::make_shared<os_time_service>();
         }
 
@@ -138,23 +116,17 @@ namespace librealsense
         public:
             win_event_device_watcher(const backend * backend)
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 _data._backend = backend;
                 _data._stopped = false;
                 _data._last = backend_device_group(backend->query_uvc_devices(), backend->query_usb_devices(), backend->query_hid_devices());
             }
             ~win_event_device_watcher()
 			{
-				LOG_DEBUG(__FUNCTION__);
-
 				stop();
 			}
 
             void start(device_changed_callback callback) override
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 std::lock_guard<std::mutex> lock(_m);
                 if (!_data._stopped) throw wrong_api_call_sequence_exception("Cannot start a running device_watcher");
                 _data._stopped = false;
@@ -164,8 +136,6 @@ namespace librealsense
 
             void stop() override
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 std::lock_guard<std::mutex> lock(_m);
                 if (!_data._stopped)
                 {
@@ -194,8 +164,6 @@ namespace librealsense
 
             void run()
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 WNDCLASS windowClass = {};
                 LPCWSTR SzWndClass = TEXT("MINWINAPP");
                 windowClass.lpfnWndProc = &on_win_event;
@@ -230,8 +198,6 @@ namespace librealsense
 
             static LRESULT CALLBACK on_win_event(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 LRESULT lRet = 1;
 
                 switch (message)
@@ -299,8 +265,6 @@ namespace librealsense
 
             static BOOL DoRegisterDeviceInterfaceToHwnd(HWND hWnd)
             {
-				LOG_DEBUG(__FUNCTION__);
-
                 auto data = reinterpret_cast<extra_data*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
                 //===========================register HWmonitor events==============================
@@ -355,8 +319,6 @@ namespace librealsense
 
         std::shared_ptr<device_watcher> win7_backend::create_device_watcher() const
         {
-			LOG_DEBUG(__FUNCTION__);
-
             return std::make_shared<polling_device_watcher>(this);
         }
     }
