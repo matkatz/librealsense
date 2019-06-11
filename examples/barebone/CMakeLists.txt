@@ -18,7 +18,7 @@ endif()
 if(BUILD_GRAPHICAL_EXAMPLES)
     add_executable(${PROJECT_NAME} rsmon_barebone.cpp rsmon_utils.h)
     target_link_libraries(${PROJECT_NAME} ${DEPENDENCIES})
-    include_directories(${PROJECT_NAME} ../ ../../third-party/tclap/include)
+    include_directories(${PROJECT_NAME} ../ ../../third-party/tclap/include ./../../common)
     set_target_properties (rs-capture PROPERTIES
         FOLDER "Examples"
     )

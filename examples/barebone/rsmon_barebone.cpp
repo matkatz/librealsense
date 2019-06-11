@@ -3,6 +3,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include "tiny-profiler.h"
 #include "rsmon_utils.h"
 
 FILE* log_file;
@@ -23,10 +24,13 @@ struct RealsenseHandle
         fprintf(log_file, "  enable_stream(RS2_STREAM_DEPTH, %d, %d, RS2_FORMAT_Z16)\n", width, height);
         
         fprintf(log_file, "  Starting pipeline...\n");
-        pipe.start(cfg);
+        {
+            scoped_timer t("pipe.start(cfg)");
+            pipe.start(cfg);
+        }
         fprintf(log_file, "  Pipeline started\n");
 
-		pipe.wait_for_frames();
+        pipe.wait_for_frames();
         model = pipe.get_active_profile().get_device().get_info(RS2_CAMERA_INFO_NAME);
         
         depth_scale = pipe.get_active_profile().get_device().first<rs2::depth_sensor>().get_depth_scale();
