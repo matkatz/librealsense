@@ -48,6 +48,10 @@ macro(global_set_flags)
         add_definitions(-DRS2_USE_CUDA)
     endif()
 
+    if (BUILD_INTERNAL_UNIT_TESTS)
+        add_definitions(-DRS2_BUILD_INTERNAL_UNIT_TESTS)
+    endif()
+
     if(FORCE_LIBUVC)
         set(BACKEND RS2_USE_LIBUVC_BACKEND)
         message( WARNING "Using libuvc!" )

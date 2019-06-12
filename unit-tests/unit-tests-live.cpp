@@ -757,10 +757,10 @@ TEST_CASE("No extrinsic transformation between a stream and itself", "[live]")
         REQUIRE(device_count > 0);
 
         // For each device
-        for (auto&& dev : list)
+        for (auto&& snr : list)
         {
             std::vector<rs2::stream_profile> profs;
-            REQUIRE_NOTHROW(profs = dev.get_stream_profiles());
+            REQUIRE_NOTHROW(profs = snr.get_stream_profiles());
             REQUIRE(profs.size()>0);
 
             rs2_extrinsics extrin;
