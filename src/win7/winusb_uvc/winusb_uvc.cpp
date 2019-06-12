@@ -969,6 +969,10 @@ void stream_thread(winusb_uvc_stream_context *strctx)
 		archive.deallocate(ptr);
 	}
 
+	// Preemptively clean pipe state to prepare for future transactions
+	auto ret = WinUsb_FlushPipe(strctx->stream->stream_if->associateHandle, strctx->endpoint);
+	ret = WinUsb_ResetPipe(strctx->stream->stream_if->associateHandle, strctx->endpoint);
+
 	std::thread t([&]() {
 		while (keep_sending_callbacks)
 		{
@@ -999,7 +1003,8 @@ void stream_thread(winusb_uvc_stream_context *strctx)
 	} while (strctx->stream->running);
 
 	// reseting pipe after use
-	auto ret = WinUsb_ResetPipe(strctx->stream->stream_if->associateHandle, strctx->endpoint);
+	ret = WinUsb_FlushPipe(strctx->stream->stream_if->associateHandle, strctx->endpoint);
+	ret = WinUsb_ResetPipe(strctx->stream->stream_if->associateHandle, strctx->endpoint);
 
 	free(buffer);
 	free(strctx);
