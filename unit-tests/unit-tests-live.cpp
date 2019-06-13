@@ -5794,3 +5794,53 @@ TEST_CASE("Wheel_Odometry_API", "[live]")
         }
     }
 }
+
+TEST_CASE("Extrinsic graph management", "[live]")
+{
+    // Require at least one device to be plugged in
+    rs2::context ctx;
+    {
+        auto list = ctx.query_devices();
+        REQUIRE(list.size());
+
+        // For each device
+        //auto& b = environment::get_instance().get_extrinsics_graph();
+        for (int i = 0; i < 1000; i++)
+        {
+            //for (auto&& dev : list)
+            for (int j=0; j < list.size(); j++)
+            {
+                rs2::device dev{};
+                {
+                    //scoped_timer t1("Dev generation");
+                    dev = list[j];
+                }
+
+                //std::cout << __LINE__ << " Iteration " << i << " : Extrinsic graph map size is " << b._streams.size() << std::endl;
+                for (auto&& snr : dev.query_sensors())
+                {
+                    std::vector<rs2::stream_profile> profs;
+                    REQUIRE_NOTHROW(profs = snr.get_stream_profiles());
+                    //snr.get_info(RS2_CAMERA_INFO_NAME);
+                    REQUIRE(profs.size() > 0);
+
+                    //std::cout << __LINE__ << " " << snr.get_info(RS2_CAMERA_INFO_NAME) <<" : Extrinsic graph map size is " << b._streams.size() << std::endl;
+
+                    //rs2_extrinsics extrin{};
+                    //try {
+                    //    auto prof = profs[0];
+                    //    extrin = prof.get_extrinsics_to(prof);
+                    //}
+                    //catch (const rs2::error &e) {
+                    //    // if device isn't calibrated, get_extrinsics must error out (according to old comment. Might not be true under new API)
+                    //    WARN(e.what());
+                    //    continue;
+                    //}
+
+                    /*require_identity_matrix(extrin.rotation);
+                    require_zero_vector(extrin.translation);*/
+                }
+            }
+        }
+    }
+}
