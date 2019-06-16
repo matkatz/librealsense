@@ -53,7 +53,7 @@ namespace librealsense
         std::mutex _mutex;
         std::map<int, std::map<int, std::weak_ptr<lazy<rs2_extrinsics>>>> _extrinsics;
 
-        std::vector<std::shared_ptr<lazy<rs2_extrinsics>>> _external_extrinsics;
+        //std::vector<std::shared_ptr<lazy<rs2_extrinsics>>> _external_extrinsics;
 
         std::shared_ptr<lazy<rs2_extrinsics>> _id;
         std::map<int, std::weak_ptr<const stream_interface>> _streams;
