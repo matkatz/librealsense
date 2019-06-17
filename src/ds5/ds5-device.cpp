@@ -106,20 +106,6 @@ namespace librealsense
             uvc_sensor::open(requests);
         }
 
-        void save_to_file(std::string file, std::chrono::time_point<std::chrono::high_resolution_clock> s)
-        {
-            auto e = std::chrono::high_resolution_clock::now();
-            //auto d = std::chrono::duration_cast<double, std::chrono::microseconds>(e - s).count();
-            auto d = std::chrono::duration<double, std::micro>(e - s);
-            //auto d = std::chrono::duration_cast<std::chrono::microseconds>(e - s).count();
-            //auto d = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::duration<double, std::nano>(n.timestamp));
-            std::ofstream outfile;
-            outfile.open(file + "_test.csv", std::ios_base::app);
-            outfile << d.count() << std::endl;
-            outfile.close();
-        }
-
-
         /*
         Infrared profiles are initialized with the following logic:
         - If device has color sensor (D415 / D435), infrared profile is chosen with Y8 format
@@ -147,7 +133,6 @@ namespace librealsense
                     (tgt.fps == prof->get_framerate()) && (streamindex == prof->get_stream_index()));
             };
 
-            auto s = std::chrono::high_resolution_clock::now();
             for (auto p : results)
             {
                 // Register stream types
@@ -181,7 +166,6 @@ namespace librealsense
                     });
                 }
             }
-            save_to_file("init_stream_profiles", s);
             auto dev = dynamic_cast<const ds5_device*>(&get_device());
             auto dev_name = (dev) ? dev->get_info(RS2_CAMERA_INFO_NAME) : "";
 

@@ -7,12 +7,6 @@
 #include <memory>
 #include <mutex>
 
-#if RS2_BUILD_INTERNAL_UNIT_TESTS
-#define PRIVATE_TESTABLE public
-#else
-#define PRIVATE_TESTABLE private
-#endif
-
 namespace librealsense
 {
     class extrinsics_graph
@@ -62,7 +56,6 @@ namespace librealsense
         std::atomic<int> _locks_count;
         std::map<int, std::map<int, std::weak_ptr<lazy<rs2_extrinsics>>>> _extrinsics;
 
-        //std::vector<std::shared_ptr<lazy<rs2_extrinsics>>> _external_extrinsics;
         std::map<int, std::weak_ptr<const stream_interface>> _streams;
 
     };
