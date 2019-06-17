@@ -1115,7 +1115,6 @@ void winusb_uvc_stream_close(winusb_uvc_stream_handle_t *strmh)
 
 	DL_DELETE(strmh->devh->streams, strmh);
 
-	free(strmh->user_ptr);
 	free(strmh);
 }
 

@@ -621,14 +621,14 @@ namespace librealsense
 
             winusb_free_formats(formats);
 
-            callback_context *context = new callback_context();
-            context->_callback = callback;
-            context->_this = this;
-            context->_profile = profile;
+            _cb_context = std::make_shared<callback_context>();
+            _cb_context->_callback = callback;
+            _cb_context->_profile = profile;
+            _cb_context->_this = this;
 
-            auto sts = winusb_start_streaming(_device.get(), &ctrl, internal_winusb_uvc_callback, context, 0);
-			if(sts != UVC_SUCCESS)
-				throw std::runtime_error("Failed to start streaming!");
+            auto sts = winusb_start_streaming(_device.get(), &ctrl, internal_winusb_uvc_callback, _cb_context.get(), 0);
+            if(sts != UVC_SUCCESS)
+                throw std::runtime_error("Failed to start streaming!");
         }
 
         void win7_uvc_device::stream_on(std::function<void(const notification& n)> error_handler)
