@@ -11,9 +11,13 @@
 #include "../usb/usb-enumerator.h"
 #include <chrono>
 #include <cctype> // std::tolower
+#include "hid/hid-types.h"
+#include "hid/hid-device.h"
 
-namespace librealsense {
-    namespace platform {
+namespace librealsense
+{
+    namespace platform
+    {
         android_backend::android_backend() {
         }
 
@@ -53,14 +57,45 @@ namespace librealsense {
             return usb_enumerator::query_devices_info();
         }
 
+        std::vector<hid_device_info> generate_hid_group(hid_device_info info)
+        {
+            std::vector<hid_device_info> rv;
+            hid_device_info hid_info;
+
+            hid_info.vid = info.vid;
+            hid_info.pid = info.pid;
+            hid_info.unique_id = info.unique_id;
+
+
+            hid_info.id = gyro;
+            hid_info.device_path = hid_info.id;
+            rv.push_back(hid_info);
+            hid_info.id = accel;
+            hid_info.device_path = hid_info.id;
+            rv.push_back(hid_info);
+            hid_info.id = custom;
+            hid_info.device_path = hid_info.id;
+            rv.push_back(hid_info);
+
+            return rv;
+        }
+
         std::shared_ptr<hid_device> android_backend::create_hid_device(hid_device_info info) const {
-            throw std::runtime_error("create_hid_device Not supported");
+            auto devices = usb_enumerator::query_devices_info();
+            for (auto&& usb_info : devices)
+            {
+                if(usb_info.unique_id != info.unique_id)
+                    continue;
+
+                auto dev = usb_enumerator::create_usb_device(usb_info);
+                return std::make_shared<rs_hid_device>(generate_hid_group(info), dev);
+            }
+
+            return nullptr;
         }
 
         std::vector<hid_device_info> android_backend::query_hid_devices() const {
-            std::vector<hid_device_info> devices;
-            // Not supported 
-            return devices;
+            return device_watcher_usbhost::instance()->query_hid_devices();
         }
 
         std::shared_ptr<time_service> android_backend::create_time_service() const {

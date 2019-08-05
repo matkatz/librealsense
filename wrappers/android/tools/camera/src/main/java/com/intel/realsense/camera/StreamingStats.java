@@ -1,5 +1,6 @@
 package com.intel.realsense.camera;
 
+import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameCallback;
 import com.intel.realsense.librealsense.FrameSet;
@@ -16,7 +17,7 @@ public class StreamingStats {
     private Map<Integer, Integer> mLastFrames = new HashMap<>();
 
     private void initStream(StreamProfile profile){
-        VideoStreamProfile vsp = profile.as(VideoStreamProfile.class);
+        VideoStreamProfile vsp = profile.as(Extension.VIDEO_PROFILE);
         String name = vsp.getType().name() + " | " +
                 vsp.getFormat().name() + " | " +
                 vsp.getWidth() + "x" + vsp.getHeight() + " | " +

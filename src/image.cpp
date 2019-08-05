@@ -84,19 +84,6 @@ namespace librealsense
     // Naive unpacking routines //
     //////////////////////////////
 
-#pragma pack (push, 1)
-
-    struct hid_data
-    {
-        short x;
-        byte reserved1[2];
-        short y;
-        byte reserved2[2];
-        short z;
-        byte reserved3[2];
-    };
-
-#pragma pack(pop)
 
     template<rs2_format FORMAT> void copy_hid_axes(byte * const dest[], const byte * source, double factor)
     {
@@ -104,7 +91,7 @@ namespace librealsense
         auto hid = (hid_data*)(source);
 
         auto res= float3{ float(hid->x), float(hid->y), float(hid->z)} * float(factor);
-
+        //std::cout<<res.x<<" "<<res.y<<" "<<res.z<<std::endl;
         librealsense::copy(dest[0], &res, sizeof(float3));
     }
 

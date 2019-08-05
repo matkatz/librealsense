@@ -52,8 +52,9 @@ namespace librealsense
             {
                 claim_interface(i->get_number());
                 auto iep = i->first_endpoint(RS2_USB_ENDPOINT_DIRECTION_READ, RS2_USB_ENDPOINT_INTERRUPT);
-                if(iep)
+                if(iep && !_interrupt_endpoint) {// HW notifications are received on the first interface interrupt endpoint
                     _interrupt_endpoint = std::dynamic_pointer_cast<usb_endpoint_usbhost>(iep);
+                }
             }
             listen_to_interrupts();
         }
