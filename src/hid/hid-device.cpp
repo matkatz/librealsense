@@ -23,6 +23,16 @@ namespace librealsense
 
         }
 
+        std::vector<hid_sensor> rs_hid_device::get_sensors()
+        {
+            std::vector<hid_sensor> res;
+            for(auto&& info : _hid_device_infos)
+            {
+                res.push_back({info.id});
+            }
+            return res;
+        }
+
         void rs_hid_device::open(const std::vector<hid_profile>& hid_profiles)
         {
             for(auto&& p:hid_profiles)
@@ -30,7 +40,6 @@ namespace librealsense
                 set_feature_report(DEVICE_POWER_D0, _sensor_to_id[p.sensor_name], p.frequency);
             }
             _configured_profiles = hid_profiles;
-            //start_stream(DEVICE_POWER_D0, REPORT_ID_GYROMETER_3D);
         }
 
         void rs_hid_device::close()
@@ -66,16 +75,6 @@ namespace librealsense
             _poll_interrupts_thread->start();
         }
 
-        std::vector<hid_sensor> rs_hid_device::get_sensors()
-        {
-            std::vector<hid_sensor> res;
-            for(auto&& info : _hid_device_infos)
-            {
-                res.push_back({info.id});
-            }
-            return res;
-        }
-
         void rs_hid_device::poll_for_interrupt()
         {
             unsigned char buffer[SIZE_OF_FRAME];
@@ -87,8 +86,6 @@ namespace librealsense
             if (res == RS2_USB_STATUS_SUCCESS)
             {
                 REALSENSE_HID_REPORT report = *(REALSENSE_HID_REPORT*)buffer;
-                report.timeStamp/1000;
-
                 _queue.enqueue(std::move(report));
             }
         }
@@ -108,7 +105,6 @@ namespace librealsense
                     sensor_data data;
                     data.sensor = {_id_to_sensor[report.reportId]};
 
-                    //std::cout<<(int)report.reportId<<" "<<report.timeStamp<<std::endl;
                     hid_data hid;
                     hid.x = report.x;
                     hid.y = report.y;
@@ -118,11 +114,8 @@ namespace librealsense
                     data.fo.metadata = &(report.timeStamp);
                     data.fo.frame_size = sizeof(REALSENSE_HID_REPORT);
                     data.fo.metadata_size = sizeof(report.timeStamp);
+
                     _callback(data);
-                }
-                else /*if(report.reportId == REPORT_ID_CUSTOM)*/
-                {
-                    //std::cout<<(int)report.reportId<<" "<<(int)(report.unknown)<<std::endl;
                 }
             }
         }

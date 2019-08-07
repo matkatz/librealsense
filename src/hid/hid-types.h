@@ -8,17 +8,17 @@
 #include <string>
 #include <map>
 
-#define HID_REPORT_TYPE_INPUT   1
-#define HID_REPORT_TYPE_FEATURE 3
+#define HID_REPORT_TYPE_INPUT       1
+#define HID_REPORT_TYPE_FEATURE     3
 
-#define DEVICE_POWER_D0 2
-#define DEVICE_POWER_D4 6
+#define DEVICE_POWER_D0             2
+#define DEVICE_POWER_D4             6
 
-#define REPORT_ID_ACCELEROMETER_3D 1
-#define REPORT_ID_GYROMETER_3D     2
-#define REPORT_ID_CUSTOM 3
+#define REPORT_ID_ACCELEROMETER_3D  1
+#define REPORT_ID_GYROMETER_3D      2
+#define REPORT_ID_CUSTOM            3
 
-#define SIZE_OF_FRAME     1024
+#define SIZE_OF_FRAME               32
 
 static std::string gyro = "gyro_3d";
 static std::string accel = "accel_3d";

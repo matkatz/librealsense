@@ -11,6 +11,7 @@ import com.intel.realsense.librealsense.Device;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.FrameSet;
+import com.intel.realsense.librealsense.MotionStreamProfile;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
@@ -89,21 +90,23 @@ public class Streamer {
                 for(Map.Entry e : profilesMap.entrySet()){
                     List<StreamProfile> profiles = (List<StreamProfile>) e.getValue();
                     StreamProfile p = profiles.get(0);
-                    if(!p.is(Extension.VIDEO_PROFILE))
-                        continue;
                     if(!sharedPref.getBoolean(SettingsActivity.getEnabledDeviceConfigString(pid, p.getType(), p.getIndex()), false))
                         continue;
                     int index = sharedPref.getInt(SettingsActivity.getIndexdDeviceConfigString(pid, p.getType(), p.getIndex()), 0);
                     if(index == -1 || index >= profiles.size())
                         throw new IllegalArgumentException("Failed to resolve config");
                     StreamProfile sp = profiles.get(index);
-                    VideoStreamProfile vsp = sp.as(Extension.VIDEO_PROFILE);
-                    config.enableStream(vsp.getType(), vsp.getIndex(), vsp.getWidth(), vsp.getHeight(), vsp.getFormat(), vsp.getFrameRate());
+                    if(p.is(Extension.VIDEO_PROFILE)){
+                        VideoStreamProfile vsp = sp.as(Extension.VIDEO_PROFILE);
+                        config.enableStream(vsp.getType(), vsp.getIndex(), vsp.getWidth(), vsp.getHeight(), vsp.getFormat(), vsp.getFrameRate());
+                    }
+                    if(p.is(Extension.MOTION_PROFILE)){
+                        MotionStreamProfile msp = sp.as(Extension.MOTION_PROFILE);
+                        config.enableStream(msp.getType(), msp.getIndex(), 0, 0, msp.getFormat(), msp.getFrameRate());
+                    }
                 }
             }
         }
-
-
     }
 
     void configAndStart() throws Exception {
