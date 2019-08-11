@@ -60,6 +60,9 @@ namespace librealsense
         color_ep->register_pixel_format(pf_bayer16);
         color_ep->register_pixel_format(pf_uyvyc);
 
+        if(color_devices_info.front().pid == ds::RS465_PID)
+            color_ep->register_pixel_format(pf_mjpg);
+
         color_ep->register_pu(RS2_OPTION_BACKLIGHT_COMPENSATION);
         color_ep->register_pu(RS2_OPTION_BRIGHTNESS);
         color_ep->register_pu(RS2_OPTION_CONTRAST);

@@ -3,6 +3,20 @@
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
 #include "example.hpp"          // Include short list of convenience functions for rendering
+#include <fstream>
+
+void save(const rs2::frame& f)
+{
+    if (!f)
+        return;
+    auto n = f.get_frame_number();
+    auto d = f.get_data();
+    auto s = f.get_data_size();
+    std::string name = std::string("images\\img_") + std::to_string(n) + std::string(".jpg");
+    std::ofstream ofile(name, std::ios::binary);
+    ofile.write((char*)d, s);
+    ofile.close();
+}
 
 // Capture Example demonstrates how to
 // capture depth and color video streams and render them to the screen
@@ -19,21 +33,24 @@ int main(int argc, char * argv[]) try
 
     // Declare RealSense pipeline, encapsulating the actual device and sensors
     rs2::pipeline pipe;
+    rs2::config cfg;
 
+    cfg.enable_stream(RS2_STREAM_COLOR, RS2_FORMAT_MJPEG);
     // Start streaming with default recommended configuration
     // The default video configuration contains Depth and Color streams
     // If a device is capable to stream IMU data, both Gyro and Accelerometer are enabled by default
-    pipe.start();
+    pipe.start(cfg);
 
     while (app) // Application still alive?
     {
-        rs2::frameset data = pipe.wait_for_frames().    // Wait for next set of frames from the camera
-                             apply_filter(printer).     // Print each enabled stream frame rate
-                             apply_filter(color_map);   // Find and colorize the depth data
 
-        // The show method, when applied on frameset, break it to frames and upload each frame into a gl textures
-        // Each texture is displayed on different viewport according to it's stream unique id
-        app.show(data);
+        auto c = pipe.wait_for_frames().first(RS2_STREAM_COLOR);
+        save(c);
+        //if (c) {
+        //    auto d = c.get_data();
+        //    auto s = c.get_data_size();
+        //    printf("%d\n", s);
+        //}
     }
 
     return EXIT_SUCCESS;
