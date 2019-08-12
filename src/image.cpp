@@ -5,6 +5,9 @@
 #include "image-avx.h"
 #include "types.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../third-party/stb_image.h"
+
 #ifdef RS2_USE_CUDA
 #include "cuda/cuda-conversion.cuh"
 #endif
@@ -77,7 +80,7 @@ namespace librealsense
         case RS2_FORMAT_MOTION_RAW: return 1;
         case RS2_FORMAT_MOTION_XYZ32F: return 1;
         case RS2_FORMAT_6DOF: return 1;
-        case RS2_FORMAT_MJPEG: return 2;
+        case RS2_FORMAT_MJPEG: return 1;
         default: assert(false); return 0;
         }
     }
@@ -925,9 +928,19 @@ namespace librealsense
 #endif
     }
 
-    void unpack_mjpeg(byte * const dest[], const byte * source, int width, int height, int actual_size)
+    void copy_mjpeg(byte * const dest[], const byte * source, int width, int height, int actual_size)
     {
         librealsense::copy(dest[0], source, actual_size);
+    }
+
+    void unpack_mjpeg(byte * const dest[], const byte * source, int width, int height, int actual_size)
+    {
+        //STBIDEF stbi_uc *stbi_load_from_memory(stbi_uc const *buffer, int len, int *x, int *y, int *comp, int req_comp)
+        int w, h, bpp;
+        auto uncompressed_rgb = stbi_load_from_memory(source, actual_size, &w, &h, &bpp, false);
+        auto uncompressed_size = w * h * bpp;
+        librealsense::copy(dest[0], uncompressed_rgb, uncompressed_size);
+        stbi_image_free(uncompressed_rgb);
     }
 
     //////////////////////////////////////
@@ -1120,7 +1133,9 @@ namespace librealsense
                                                                                                                                                      { { RS2_STREAM_GPIO, 2 },      RS2_FORMAT_GPIO_RAW },
                                                                                                                                                      { { RS2_STREAM_GPIO, 3 },      RS2_FORMAT_GPIO_RAW },
                                                                                                                                                      { { RS2_STREAM_GPIO, 4 },      RS2_FORMAT_GPIO_RAW }} } } };
-    const native_pixel_format pf_mjpg                     = { rs_fourcc('M','J','P','G'), 1, 1, {  { true,                &unpack_mjpeg,                                { { RS2_STREAM_COLOR,          RS2_FORMAT_MJPEG } } } } };
+
+    const native_pixel_format pf_mjpg                     = { rs_fourcc('M','J','P','G'), 1, 1, {  { true,                &copy_mjpeg,                                   { { RS2_STREAM_COLOR,       RS2_FORMAT_MJPEG } } },
+                                                                                                   { true,                &unpack_mjpeg,                                 { { RS2_STREAM_COLOR,       RS2_FORMAT_RGB8} } } } };
     }
 
 #pragma pack(pop)
