@@ -926,6 +926,17 @@ namespace rs2
         }
         catch (...) {}
 
+        auto filters = s->get_recommended_filters();
+        
+        auto it  = std::find_if(filters.begin(), filters.end(), [&](const filter &f)
+        {
+            if (f.is<zero_order_invalidation>())
+                return true;
+            return false;
+        });
+
+        auto is_zo = it != filters.end();
+
         for (auto&& f : s->get_recommended_filters())
         {
             auto shared_filter = std::make_shared<filter>(f);
@@ -936,11 +947,17 @@ namespace rs2
             //if (shared_filter->is<disparity_transform>())
                // model->visible = false;
 
-            if (shared_filter->is<zero_order_invalidation>())
+            if (is_zo)
             {
-                zero_order_artifact_fix = model;
-                viewer.zo_sensors++;
+                if (shared_filter->is<zero_order_invalidation>())
+                {
+                    zero_order_artifact_fix = model;
+                    viewer.zo_sensors++;
+                }
+                else
+                    model->enabled = false;
             }
+
 
             if (shared_filter->is<hole_filling_filter>())
                 model->enabled = false;
@@ -1518,7 +1535,7 @@ namespace rs2
         try {
             s->start([&, syncer](frame f)
             {
-                if (viewer.zo_sensors.load() > 0 || (viewer.synchronization_enable && is_synchronized_frame(viewer, f)))
+                if (viewer.synchronization_enable && is_synchronized_frame(viewer, f))
                 {
                     syncer->invoke(f);
                 }
@@ -2760,7 +2777,7 @@ namespace rs2
 
                     static auto table = create_default_fw_table();
 
-                    manager = std::make_shared<firmware_update_manager>(*this, dev, viewer.ctx, table[product_line]);
+                    manager = std::make_shared<firmware_update_manager>(*this, dev, viewer.ctx, table[product_line], true);
                 }
 
                 if (is_upgradeable(fw, recommended))
@@ -3716,6 +3733,51 @@ namespace rs2
         ImGui::PopStyleColor(2);
     }
 
+    void device_model::begin_update_unsigned(viewer_model& viewer, std::string& error_message)
+    {
+        try
+        {
+            std::vector<uint8_t> data;
+            auto ret = file_dialog_open(open_file, "Unsigned Firmware Image\0*.bin\0", NULL, NULL);
+            if (ret)
+            {
+                std::ifstream file(ret, std::ios::binary | std::ios::in);
+                if (file.good())
+                {
+                    data = std::vector<uint8_t>((std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+                }
+                else
+                {
+                    error_message = to_string() << "Could not open file '" << ret << "'";
+                    return;
+                }
+            }
+
+            else return; // Aborted by the user
+
+            auto manager = std::make_shared<firmware_update_manager>(*this, dev, viewer.ctx, data, false);
+
+            auto id = viewer.not_model.add_notification({ "Manual Update requested",
+                RS2_LOG_SEVERITY_INFO,
+                RS2_NOTIFICATION_CATEGORY_FIRMWARE_UPDATE_RECOMMENDED });
+
+            viewer.not_model.attach_update_manager(id, manager, true);
+
+            cleanup();
+
+            manager->start();
+        }
+        catch (const error& e)
+        {
+            error_message = error_to_string(e);
+        }
+        catch (const std::exception& e)
+        {
+            error_message = e.what();
+        }
+    }
+
     void device_model::begin_update(std::vector<uint8_t> data, viewer_model& viewer, std::string& error_message)
     {
         try
@@ -3740,7 +3802,7 @@ namespace rs2
                 else return; // Aborted by the user
             }
             
-            auto manager = std::make_shared<firmware_update_manager>(*this, dev, viewer.ctx, data);
+            auto manager = std::make_shared<firmware_update_manager>(*this, dev, viewer.ctx, data, true);
 
             auto id = viewer.not_model.add_notification({ "Manual Update requested",
                 RS2_LOG_SEVERITY_INFO,
@@ -4014,24 +4076,42 @@ namespace rs2
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Install official signed firmware from file to the device");
 
-                    if ((dev.supports(RS2_CAMERA_INFO_PRODUCT_LINE)) ||
-                        (dev.query_sensors().size() && dev.query_sensors().front().supports(RS2_CAMERA_INFO_PRODUCT_LINE)))
-                    if (ImGui::Selectable("Install Recommended Firmware "))
+                    if (is_recommended_fw_available() &&
+                        ((dev.supports(RS2_CAMERA_INFO_PRODUCT_LINE)) ||
+                        (dev.query_sensors().size() && dev.query_sensors().front().supports(RS2_CAMERA_INFO_PRODUCT_LINE))))
                     {
-                        auto sensors = dev.query_sensors();
-                        auto product_line_str = "";
-                        if (dev.supports(RS2_CAMERA_INFO_PRODUCT_LINE))
-                            product_line_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_LINE);
-                        if (sensors.size() && sensors.front().supports(RS2_CAMERA_INFO_PRODUCT_LINE))
-                            product_line_str = sensors.front().get_info(RS2_CAMERA_INFO_PRODUCT_LINE);
-                        int product_line = parse_product_line(product_line_str);
+                        if (ImGui::Selectable("Install Recommended Firmware "))
+                        {
+                            auto sensors = dev.query_sensors();
+                            auto product_line_str = "";
+                            if (dev.supports(RS2_CAMERA_INFO_PRODUCT_LINE))
+                                product_line_str = dev.get_info(RS2_CAMERA_INFO_PRODUCT_LINE);
+                            if (sensors.size() && sensors.front().supports(RS2_CAMERA_INFO_PRODUCT_LINE))
+                                product_line_str = sensors.front().get_info(RS2_CAMERA_INFO_PRODUCT_LINE);
+                            int product_line = parse_product_line(product_line_str);
 
-                        static auto table = create_default_fw_table();
+                            static auto table = create_default_fw_table();
 
-                        begin_update(table[product_line], viewer, error_message);
+                            begin_update(table[product_line], viewer, error_message);
+                        }
                     }
+
                     if (ImGui::IsItemHovered())
                         ImGui::SetTooltip("Install default recommended firmware for this device");
+                }
+
+                bool is_locked = true;
+                if (dev.supports(RS2_CAMERA_INFO_CAMERA_LOCKED))
+                    is_locked = std::string(dev.get_info(RS2_CAMERA_INFO_CAMERA_LOCKED)) == "YES" ? true : false;
+
+                if (dev.is<rs2::updatable>() && !is_locked)
+                {
+                    if (ImGui::Selectable("Update Unsigned Firmware..."))
+                    {
+                        begin_update_unsigned(viewer, error_message);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Install non official unsigned firmware from file to the device");
                 }
             }
 
@@ -5074,24 +5154,25 @@ namespace rs2
                     }
                 }
 
-
-                for (auto&& pb : sub->const_effects)
-                {
-                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
-
-                    label = to_string() << pb->get_name() << "##" << id;
-                    if (ImGui::TreeNode(label.c_str()))
+                if (sub->s->is<depth_sensor>()) {
+                    for (auto&& pb : sub->const_effects)
                     {
-                        for (auto i = 0; i < RS2_OPTION_COUNT; i++)
-                        {
-                            auto opt = static_cast<rs2_option>(i);
-                            if (skip_option(opt)) continue;
-                            pb->get_option(opt).draw_option(
-                                dev.is<playback>() || update_read_only_options,
-                                false, error_message, viewer.not_model);
-                        }
+                        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
 
-                        ImGui::TreePop();
+                        label = to_string() << pb->get_name() << "##" << id;
+                        if (ImGui::TreeNode(label.c_str()))
+                        {
+                            for (auto i = 0; i < RS2_OPTION_COUNT; i++)
+                            {
+                                auto opt = static_cast<rs2_option>(i);
+                                if (skip_option(opt)) continue;
+                                pb->get_option(opt).draw_option(
+                                    dev.is<playback>() || update_read_only_options,
+                                    false, error_message, viewer.not_model);
+                            }
+
+                            ImGui::TreePop();
+                        }
                     }
                 }
 

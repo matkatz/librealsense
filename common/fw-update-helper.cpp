@@ -17,10 +17,17 @@
 #else
 #define FW_D4XX_FW_IMAGE_VERSION ""
 #define FW_SR3XX_FW_IMAGE_VERSION ""
+const char* fw_get_D4XX_FW_Image(int) { return NULL; }
+const char* fw_get_SR3XX_FW_Image(int) { return NULL; }
 #endif // INTERNAL_FW
 
 namespace rs2
 {
+    bool is_recommended_fw_available()
+    {
+        return !(strcmp("", FW_D4XX_FW_IMAGE_VERSION) == 0);
+    }
+
     static std::map<int, std::string> product_line_to_fw =
     {
         {RS2_PRODUCT_LINE_D400, FW_D4XX_FW_IMAGE_VERSION},
@@ -194,37 +201,40 @@ namespace rs2
 
                 next_progress = 40;
 
-                log("Requesting to switch to recovery mode");
-                upd.enter_update_state();
+                if (_is_signed)
+                {
+                    log("Requesting to switch to recovery mode");
+                    upd.enter_update_state();
 
-                if (!check_for([this, serial, &dfu]() {
-                    auto devs = _ctx.query_devices();
+                    if (!check_for([this, serial, &dfu]() {
+                        auto devs = _ctx.query_devices();
 
-                    for (int j = 0; j < devs.size(); j++)
-                    {
-                        try
+                        for (int j = 0; j < devs.size(); j++)
                         {
-                            auto d = devs[j];
-                            if (d.is<update_device>())
+                            try
                             {
-                                if (d.supports(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                                auto d = devs[j];
+                                if (d.is<update_device>())
                                 {
-                                    if (serial == d.get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                                    if (d.supports(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
                                     {
-                                        dfu = d;
-                                        return true;
+                                        if (serial == d.get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                                        {
+                                            dfu = d;
+                                            return true;
+                                        }
                                     }
                                 }
                             }
+                            catch (...) {}
                         }
-                        catch (...) {}
-                    }
 
-                    return false;
-                }, cleanup, std::chrono::seconds(60)))
-                {
-                    fail("Recovery device did not connect in time!");
-                    return;
+                        return false;
+                    }, cleanup, std::chrono::seconds(60)))
+                    {
+                        fail("Recovery device did not connect in time!");
+                        return;
+                    }
                 }
             }
             else
@@ -232,18 +242,30 @@ namespace rs2
                 dfu = _dev.as<update_device>();
             }
 
-            _progress = next_progress;
-
-            log("Recovery device connected, starting update");
-
-            dfu.update(_fw, [&](const float progress)
+            if (dfu)
             {
-                _progress = (ceil(progress * 10) / 10 * (90 - next_progress)) + next_progress;
-            });
+                _progress = next_progress;
 
-            log("Firmware Download completed, await DFU transition event");
-            std::this_thread::sleep_for(std::chrono::seconds(3));
-            log("Firmware Update completed, waiting for device to reconnect");
+                log("Recovery device connected, starting update");
+
+                dfu.update(_fw, [&](const float progress)
+                {
+                    _progress = (ceil(progress * 10) / 10 * (90 - next_progress)) + next_progress;
+                });
+
+                log("Firmware Download completed, await DFU transition event");
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                log("Firmware Update completed, waiting for device to reconnect");
+            }
+            else
+            {
+                auto upd = _dev.as<updatable>();
+                upd.update_unsigned(_fw, [&](const float progress)
+                {
+                    _progress = (ceil(progress * 10) / 10 * (90 - next_progress)) + next_progress;
+                });
+                log("Firmware Update completed, waiting for device to reconnect");
+            }
 
             if (!check_for([this, serial, &dfu]() {
                 auto devs = _ctx.query_devices();
