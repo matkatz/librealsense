@@ -634,11 +634,20 @@ namespace librealsense
 
         auto pid_hex_str = hexify(pid);
 
-        if ((pid == RS416_PID) && _fw_version >= firmware_version("5.9.13.0"))
+        if ((pid == RS416_PID || pid == RS416_RGB_PID) && _fw_version >= firmware_version("5.9.13.0"))
         {
             depth_ep.register_option(RS2_OPTION_HARDWARE_PRESET,
                 std::make_shared<uvc_xu_option<uint8_t>>(depth_ep, depth_xu, DS5_HARDWARE_PRESET,
                     "Hardware pipe configuration"));
+            depth_ep.register_option(RS2_OPTION_PROJECTOR_TYPE,
+                std::make_shared<uvc_xu_option<uint8_t>>(depth_ep, depth_xu, DS5_PROJECTOR_TYPE,
+                    "Select between the projector and LED, 0 - for projector, 1 - for LED"));
+            depth_ep.register_option(RS2_OPTION_LED_ENABLED,
+                std::make_shared<uvc_xu_option<uint8_t>>(depth_ep, depth_xu, DS5_LED_PWR_MODE,
+                    "Toggle the LED"));
+            depth_ep.register_option(RS2_OPTION_LED_POWER,
+                std::make_shared<uvc_xu_option<uint16_t>>(depth_ep, depth_xu, DS5_LED_PWR,
+                    "Set the power level of the LED, with 0 meaning LED off"));
         }
 
         if (_fw_version >= firmware_version("5.6.3.0"))
