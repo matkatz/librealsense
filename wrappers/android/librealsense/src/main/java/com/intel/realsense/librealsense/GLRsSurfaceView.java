@@ -6,14 +6,52 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.util.Pair;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 
 import java.util.Map;
 
 public class GLRsSurfaceView extends GLSurfaceView implements AutoCloseable{
 
     private final GLRenderer mRenderer;
+    private float mZoom = 1;
+    private final float mZoomStep = 0.05f;
+    private float mPointSize = 1;
+    private final float mPointSizeStep = 0.5f;
     private float mPreviousX = 0;
     private float mPreviousY = 0;
+
+    private boolean mControlRotation = false;
+    private boolean mControlTranslation = true;
+
+    public void increasePointSize(){
+        mPointSize *= (1 + mPointSizeStep);
+        mRenderer.setPointSize(mPointSize);
+    }
+
+    public void decreasePointSize(){
+        mPointSize *= (1 - mPointSizeStep);
+        mRenderer.setPointSize(mPointSize);
+    }
+
+    public void zoomIn(){
+        mZoom *= (1 + mZoomStep);
+        mRenderer.setScale(mZoom);
+    }
+
+    public void zoomOut(){
+        mZoom *= (1 - mZoomStep);
+        mRenderer.setScale(mZoom);
+    }
+
+    public void controlTranslation(){
+        mControlTranslation = true;
+        mControlRotation = false;
+    }
+
+    public void controlRotation(){
+        mControlTranslation = false;
+        mControlRotation = true;
+    }
 
     public GLRsSurfaceView(Context context) {
         super(context);
@@ -53,7 +91,10 @@ public class GLRsSurfaceView extends GLSurfaceView implements AutoCloseable{
 
                 float dx = x - mPreviousX;
                 float dy = y - mPreviousY;
-                mRenderer.onTouchEvent(dx, dy);
+                if(mControlRotation)
+                    mRenderer.rotate(dx, dy);
+                if(mControlTranslation)
+                    mRenderer.translate(dx, dy);
         }
 
         mPreviousX = x;

@@ -24,6 +24,8 @@ import com.intel.realsense.librealsense.GLRsSurfaceView;
 import java.util.HashMap;
 import java.util.Map;
 
+import static android.view.View.GONE;
+
 public class PreviewActivity extends AppCompatActivity {
     private static final String TAG = "librs camera preview";
 
@@ -32,7 +34,12 @@ public class PreviewActivity extends AppCompatActivity {
     private TextView mPlaybackButton;
     private TextView mSettingsButton;
     private TextView mStatisticsButton;
+    private View m3dControls;
     private TextView m3dButton;
+    private FloatingActionButton m3dControlRotateButton;
+    private FloatingActionButton m3dControlTranslateButton;
+    private FloatingActionButton m3dControlZoomOutButton;
+    private FloatingActionButton m3dControlZoomInButton;
 
     private TextView mStatsView;
     private Map<Integer, TextView> mLabels;
@@ -46,13 +53,13 @@ public class PreviewActivity extends AppCompatActivity {
     public synchronized void toggleStats(){
         statsToggle = !statsToggle;
         if(statsToggle){
-            mGLSurfaceView.setVisibility(View.GONE);
+            mGLSurfaceView.setVisibility(GONE);
             mStatsView.setVisibility(View.VISIBLE);
             mStatisticsButton.setText("Preview");
         }
         else {
             mGLSurfaceView.setVisibility(View.VISIBLE);
-            mStatsView.setVisibility(View.GONE);
+            mStatsView.setVisibility(GONE);
             mStatisticsButton.setText("Statistics");
         }
     }
@@ -70,6 +77,11 @@ public class PreviewActivity extends AppCompatActivity {
         mSettingsButton = findViewById(R.id.preview_settings_button);
         mStatisticsButton = findViewById(R.id.preview_stats_button);
         m3dButton = findViewById(R.id.preview_3d_button);
+        m3dControls = findViewById(R.id.preview_3d_controls);
+        m3dControlRotateButton = findViewById(R.id.controls_3d_rotate_fab);
+        m3dControlTranslateButton = findViewById(R.id.controls_3d_translate_fab);
+        m3dControlZoomOutButton = findViewById(R.id.controls_3d_zoom_out_fab);
+        m3dControlZoomInButton = findViewById(R.id.controls_3d_zoom_in_fab);
 
         mStartRecordFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -96,16 +108,55 @@ public class PreviewActivity extends AppCompatActivity {
         m3dButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mGLSurfaceView.setVisibility(View.GONE);
+                mGLSurfaceView.setVisibility(GONE);
                 mGLSurfaceView.clear();
                 clearLables();
                 mShow3D = !mShow3D;
                 m3dButton.setTextColor(mShow3D ? Color.YELLOW : Color.WHITE);
+                m3dControls.setVisibility(mShow3D ? View.VISIBLE : GONE);
                 mGLSurfaceView.setVisibility(View.VISIBLE);
                 SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = sharedPref.edit();
                 editor.putBoolean(getString(R.string.show_3d), mShow3D);
                 editor.commit();
+            }
+        });
+        m3dControlRotateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGLSurfaceView.controlRotation();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        m3dControlRotateButton.setVisibility(View.GONE);
+                        m3dControlTranslateButton.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+        });
+        m3dControlTranslateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGLSurfaceView.controlTranslation();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        m3dControlTranslateButton.setVisibility(View.GONE);
+                        m3dControlRotateButton.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+        });
+        m3dControlZoomOutButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGLSurfaceView.zoomOut();
+            }
+        });
+        m3dControlZoomInButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mGLSurfaceView.zoomIn();
             }
         });
         mStatisticsButton.setOnClickListener(new View.OnClickListener() {
@@ -117,6 +168,14 @@ public class PreviewActivity extends AppCompatActivity {
         SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
         mShow3D = sharedPref.getBoolean(getString(R.string.show_3d), false);
         m3dButton.setTextColor(mShow3D ? Color.YELLOW : Color.WHITE);
+        mGLSurfaceView.controlRotation();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                m3dControlRotateButton.setVisibility(View.GONE);
+                m3dControlTranslateButton.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private synchronized Map<Integer, TextView> createLabels(Map<Integer, Pair<String, Rect>> rects){
@@ -169,7 +228,7 @@ public class PreviewActivity extends AppCompatActivity {
     private void clearLables(){
         if(mLabels != null){
             for(Map.Entry<Integer, TextView> label : mLabels.entrySet())
-                label.getValue().setVisibility(View.GONE);
+                label.getValue().setVisibility(GONE);
             mLabels = null;
         }
     }

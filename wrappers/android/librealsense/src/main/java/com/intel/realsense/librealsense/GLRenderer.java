@@ -20,8 +20,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, AutoCloseable{
     private int mWindowHeight = 0;
     private int mWindowWidth = 0;
     private boolean mIsDirty = true;
-    private float mDeltaX = 0;
-    private float mDeltaY = 0;
     private Frame mPointsTexture;
     private boolean mHasColorRbg8 = false;
     private Colorizer mColorizer = new Colorizer();
@@ -160,8 +158,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, AutoCloseable{
                 f.getValue().close();
             mFrames.clear();
             mIsDirty = true;
-            mDeltaX = 0;
-            mDeltaY = 0;
             mPointcloud = null;
             if(mPointsTexture != null) mPointsTexture.close();
             mPointsTexture = null;
@@ -218,11 +214,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, AutoCloseable{
                     r = new Rect(r.left, newTop, r.right, newTop + r.height());
                 }
                 fl.draw(r);
-                if(fl instanceof GLPointsFrame){
-                    ((GLPointsFrame)fl).rotate(mDeltaX, mDeltaY);
-                    mDeltaX = 0;
-                    mDeltaY = 0;
-                }
             }
         }
     }
@@ -238,10 +229,48 @@ public class GLRenderer implements GLSurfaceView.Renderer, AutoCloseable{
         }
     }
 
-    public void onTouchEvent(float dx, float dy) {
+    public void setPointSize(float size) {
         synchronized (mFrames) {
-            mDeltaX = dx;
-            mDeltaY = dy;
+            for(Integer uid : mFrames.keySet()){
+                GLFrame fl = mFrames.get(uid);
+                if(fl instanceof GLPointsFrame){
+                    ((GLPointsFrame)fl).setmPointSize(size);
+                }
+            }
+        }
+    }
+
+    public void setScale(float scale) {
+        synchronized (mFrames) {
+            for(Integer uid : mFrames.keySet()){
+                GLFrame fl = mFrames.get(uid);
+                if(fl instanceof GLPointsFrame){
+                    ((GLPointsFrame)fl).setScale(scale);
+                }
+            }
+        }
+    }
+
+    public void rotate(float dx, float dy) {
+        synchronized (mFrames) {
+            for(Integer uid : mFrames.keySet()){
+                GLFrame fl = mFrames.get(uid);
+                if(fl instanceof GLPointsFrame){
+                    ((GLPointsFrame)fl).rotate(dx, dy);
+
+                }
+            }
+        }
+    }
+
+    public void translate(float dx, float dy) {
+        synchronized (mFrames) {
+            for(Integer uid : mFrames.keySet()){
+                GLFrame fl = mFrames.get(uid);
+                if(fl instanceof GLPointsFrame){
+                    ((GLPointsFrame)fl).translate(dx, dy);
+                }
+            }
         }
     }
 

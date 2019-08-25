@@ -2,6 +2,7 @@ package com.intel.realsense.librealsense;
 
 import android.graphics.Rect;
 import android.opengl.GLES10;
+import android.renderscript.Float3;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -10,9 +11,13 @@ import java.nio.IntBuffer;
 public class GLPointsFrame extends GLFrame {
     private Frame mTexture;
     private IntBuffer mGlTexture;
-    private float mDeltaX = 0;
-    private float mDeltaY = 0;
+    private Float3 mRotation = new Float3();
+    private Float3 mTranslation = new Float3();
+    private float mScale = 1f;
+
     private float mRotationFactor = 0.1f;
+    private float mPointSize = 3f;
+    private float mTranslationFactor = 0.001f;
 
     public synchronized void setTextureFrame(Frame frame) {
         if(mTexture != null)
@@ -53,16 +58,21 @@ public class GLPointsFrame extends GLFrame {
             return;
 
         setViewport(rect);
-
+        GLES10.glPointSize(mPointSize);
         GLES10.glMatrixMode(GLES10.GL_PROJECTION);
         GLES10.glPushMatrix();
         GLES10.glLoadIdentity();
 
-        GLES10.glOrthof(1f, -1f, -1f, 1f, -7f, 0f);
+        GLES10.glOrthof(1f, -1f, -1f, 1f, -7, 0f);
+
+        GLES10.glTranslatef(-mTranslation.x, -mTranslation.y, mTranslation.z);
 
         GLES10.glRotatef(180, 0.0f, 0.0f, 1.0f);
-        GLES10.glRotatef(-mDeltaY * mRotationFactor, 1.0f, 0.0f, 0.0f);
-        GLES10.glRotatef(mDeltaX * mRotationFactor, 0.0f, 1.0f, 0.0f);
+        GLES10.glRotatef(-mRotation.y * mRotationFactor, 1.0f, 0.0f, 0.0f);
+        GLES10.glRotatef(mRotation.x * mRotationFactor, 0.0f, 1.0f, 0.0f);
+
+//        mScale += 0.01;
+        GLES10.glScalef(mScale, mScale, mScale);
 
         Points points = mFrame.as(Extension.POINTS);
         float[] data = points.getVertices();
@@ -126,8 +136,25 @@ public class GLPointsFrame extends GLFrame {
         mGlTexture = null;
     }
 
-    public synchronized void rotate(float deltaX, float deltaY) {
-        mDeltaX += deltaX;
-        mDeltaY += deltaY;
+    public synchronized void translate(float dx, float dy) {
+        mTranslation.x += dx * mTranslationFactor;
+        mTranslation.y += dy * mTranslationFactor;
+    }
+
+    public synchronized void rotate(float dx, float dy) {
+        mRotation.x += dx;
+        mRotation.y += dy;
+    }
+
+    public synchronized void setScale(float scale) {
+        if(scale != 0) {
+            mScale = scale;
+        }
+    }
+
+    public synchronized void setmPointSize(float pointSize) {
+        if(mPointSize != 0) {
+            mPointSize = pointSize;
+        }
     }
 }
