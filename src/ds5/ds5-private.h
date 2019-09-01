@@ -22,7 +22,7 @@ namespace librealsense
         const uint16_t RS430_PID            = 0x0ad4; // AWG
         const uint16_t RS430_MM_PID         = 0x0ad5; // AWGT
         const uint16_t RS_USB2_PID          = 0x0ad6; // USB2
-        const uint16_t RS_RECOVERY_PID      = 0x0adb;
+        const uint16_t RS_RECOVERY_PID      = 0x0111;
         const uint16_t RS_USB2_RECOVERY_PID = 0x0adc;
         const uint16_t RS400_IMU_PID        = 0x0af2; // IMU
         const uint16_t RS420_PID            = 0x0af6; // PWG
@@ -130,7 +130,6 @@ namespace librealsense
             { RS465_PID,            "Intel RealSense D465" },
             { RS_USB2_PID,          "Intel RealSense USB2" },
             { RS400_IMU_PID,        "Intel RealSense IMU" }
-
         };
 
         // DS5 fisheye XU identifiers

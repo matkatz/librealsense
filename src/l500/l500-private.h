@@ -12,8 +12,9 @@ static const int NUM_OF_DEPTH_RESOLUTIONS = 2;
 
 namespace librealsense
 {
-    const uint16_t L500_PID = 0x0b0d;
-    const uint16_t L515_PID = 0x0b3d;
+    const uint16_t L500_RECOVERY_PID    = 0x0adb;
+    const uint16_t L500_PID             = 0x0b0d;
+    const uint16_t L515_PID             = 0x0b3d;
 
     namespace ivcam2
     {
@@ -29,15 +30,20 @@ namespace librealsense
 
         enum fw_cmd : uint8_t
         {
-            MRD     = 0x01,
-            GLD     = 0x0f,
-            GVD     = 0x10,
-            HW_RESET = 0x20,
-            DPT_INTRINSICS_GET = 0x5A,
-            TEMPERATURES_GET = 0x6A,
-            DPT_INTRINSICS_FULL_GET = 0x7F,
-            RGB_INTRINSIC_GET = 0x81,
-            RGB_EXTRINSIC_GET = 0x82
+            MRD                         = 0x01, //"Read Tensilica memory ( 32bit ). Output : 32bit dump"
+            FRB                         = 0x09, //"Read from flash"
+            FWB                         = 0x0A, //"Write to flash"
+            FES                         = 0x0B, //"Erase flash sector"
+            FEF                         = 0x0C, //"Erase flash full"
+            GLD                         = 0x0F, //"LoggerCoreGetDataParams"
+            GVD                         = 0x10, //"Get Version and Date"
+            DFU                         = 0x1E, //"Go to DFU"
+            HW_RESET                    = 0x20, //"HW Reset"
+            DPT_INTRINSICS_GET          = 0x5A,
+            TEMPERATURES_GET            = 0x6A,
+            DPT_INTRINSICS_FULL_GET     = 0x7F,
+            RGB_INTRINSIC_GET           = 0x81,
+            RGB_EXTRINSIC_GET           = 0x82
         };
 
         enum gvd_fields
@@ -49,8 +55,9 @@ namespace librealsense
         };
 
         static const std::map<std::uint16_t, std::string> rs500_sku_names = {
-            { L500_PID,        "Intel RealSense L500"},
-            { L515_PID,        "Intel RealSense L515"},
+            { L500_RECOVERY_PID,    "Intel RealSense L5xx Recovery"},
+            { L500_PID,             "Intel RealSense L500"},
+            { L515_PID,             "Intel RealSense L515"},
         };
 
         enum l500_notifications_types

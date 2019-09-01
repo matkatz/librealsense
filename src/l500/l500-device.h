@@ -15,11 +15,12 @@
 #include "l500-private.h"
 #include "error-handling.h"
 #include "global_timestamp_reader.h"
+#include "fw-update/fw-update-device-interface.h"
 
 namespace librealsense
 {
 
-    class l500_device : public virtual device, public debug_interface, public global_time_interface
+    class l500_device : public virtual device, public debug_interface, public global_time_interface, public updatable
     {
     public:
         l500_device(std::shared_ptr<context> ctx,
@@ -43,6 +44,10 @@ namespace librealsense
         void create_snapshot(std::shared_ptr<debug_interface>& snapshot) const override;
         void enable_recording(std::function<void(const debug_interface&)> record_action) override;
         double get_device_time_ms() override;
+
+        void enter_update_state() const override;
+        std::vector<uint8_t> backup_flash(update_progress_callback_ptr callback) override;
+        void update_flash(const std::vector<uint8_t>& image, update_progress_callback_ptr callback, int update_mode) override { }
 
     protected:
         friend class l500_depth_sensor;
