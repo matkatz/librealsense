@@ -15,12 +15,12 @@ namespace librealsense
 {
     int get_product_line(uint16_t pid, platform::usb_class cls)
     {
+        if (L500_RECOVERY_PID == pid)
+            return RS2_PRODUCT_LINE_L500;
         if (SR300_RECOVERY == pid && platform::RS2_USB_CLASS_VENDOR_SPECIFIC == cls)
             return RS2_PRODUCT_LINE_SR300;
         if(ds::RS_RECOVERY_PID == pid || ds::RS_USB2_RECOVERY_PID == pid)
             return RS2_PRODUCT_LINE_D400;
-        if (L500_RECOVERY_PID == pid)
-            return RS2_PRODUCT_LINE_L500;
         return 0;
     }
 
@@ -48,12 +48,12 @@ namespace librealsense
                 auto usb = platform::usb_enumerator::create_usb_device(info);
                 if (!usb)
                     continue;
+                if (L500_RECOVERY_PID == info.pid)
+                    return std::make_shared<l500_update_device>(ctx, register_device_notifications, usb);
                 if (ds::RS_RECOVERY_PID == info.pid || ds::RS_USB2_RECOVERY_PID == info.pid)
                     return std::make_shared<ds_update_device>(ctx, register_device_notifications, usb);
                 if (SR300_RECOVERY == info.pid)
                     return std::make_shared<sr300_update_device>(ctx, register_device_notifications, usb);
-                if (L500_RECOVERY_PID == info.pid)
-                    return std::make_shared<l500_update_device>(ctx, register_device_notifications, usb);
             }
         }
         throw std::runtime_error(to_string() << "Failed to create FW update device, device id: " << _dfu.id);
