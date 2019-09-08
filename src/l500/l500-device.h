@@ -47,7 +47,13 @@ namespace librealsense
 
         void enter_update_state() const override;
         std::vector<uint8_t> backup_flash(update_progress_callback_ptr callback) override;
-        void update_flash(const std::vector<uint8_t>& image, update_progress_callback_ptr callback, int update_mode) override { }
+        void update_flash(const std::vector<uint8_t>& image, update_progress_callback_ptr callback, int update_mode) override;
+        void update_flash_section(std::shared_ptr<hw_monitor> hwm, const std::vector<uint8_t>& image, uint32_t offset, uint32_t size, 
+            update_progress_callback_ptr callback, float continue_from, float ratio);
+        void update_section(std::shared_ptr<hw_monitor> hwm, const std::vector<uint8_t>& merged_image, flash_section fs, uint32_t tables_size,
+            update_progress_callback_ptr callback, float continue_from, float ratio);
+        void update_flash_internal(std::shared_ptr<hw_monitor> hwm, const std::vector<uint8_t>& image, std::vector<uint8_t>& flash_backup,
+            update_progress_callback_ptr callback, int update_mode);
 
     protected:
         friend class l500_depth_sensor;
@@ -65,6 +71,7 @@ namespace librealsense
         std::shared_ptr<stream_interface> _confidence_stream;
 
         void force_hardware_reset() const;
+        bool _is_locked = true;
     };
 
     class l500_notification_decoder : public notification_decoder
