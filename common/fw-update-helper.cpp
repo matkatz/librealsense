@@ -171,10 +171,10 @@ namespace rs2
     void firmware_update_manager::process_flow(std::function<void()> cleanup)
     {
         std::string serial = "";
-        if (_dev.supports(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
-            serial = _dev.get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER);
+        if (_dev.supports(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER))
+            serial = _dev.get_info(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER);
         else
-            serial = _dev.query_sensors().front().get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER);
+            serial = _dev.query_sensors().front().get_info(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER);
 
         _model.related_notifications.clear();
 
@@ -222,9 +222,9 @@ namespace rs2
                             auto d = devs[j];
                             if (d.is<update_device>())
                             {
-                                if (d.supports(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                                if (d.supports(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER))
                                 {
-                                    if (serial == d.get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                                    if (serial == d.get_info(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER))
                                     {
                                         dfu = d;
                                         return true;
@@ -282,9 +282,9 @@ namespace rs2
                 {
                     auto d = devs[j];
 
-                    if (d.query_sensors().size() && d.query_sensors().front().supports(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER))
+                    if (d.query_sensors().size() && d.query_sensors().front().supports(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER))
                     {
-                        auto s = d.query_sensors().front().get_info(RS2_CAMERA_INFO_ASIC_SERIAL_NUMBER);
+                        auto s = d.query_sensors().front().get_info(RS2_CAMERA_INFO_FIRMWARE_UPDATE_SERIAL_NUMBER);
                         if (s == serial)
                         {
                             log("Discovered connection of the original device");
