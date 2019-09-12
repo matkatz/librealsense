@@ -650,6 +650,13 @@ namespace librealsense
                     "Set the power level of the LED, with 0 meaning LED off"));
         }
 
+        if (pid == RS415_PID && _fw_version >= firmware_version("5.9.13.0"))
+        {
+            depth_ep.register_option(RS2_OPTION_HARDWARE_PRESET,
+                std::make_shared<uvc_xu_option<uint8_t>>(depth_ep, depth_xu, DS5_HARDWARE_PRESET,
+                    "Hardware pipe configuration"));
+        }
+
         if (_fw_version >= firmware_version("5.6.3.0"))
         {
             _is_locked = _hw_monitor->is_camera_locked(GVD, is_camera_locked_offset);
