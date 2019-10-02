@@ -60,7 +60,6 @@ Java_com_intel_realsense_librealsense_DeviceWatcher_nAddUsbDevice(JNIEnv *env, j
     if (handle != NULL) {
         LOG_DEBUG("AddUsbDevice, create");
         auto d = std::make_shared<librealsense::platform::usb_device_usbhost>(handle);
-        d->open();
         _devices.push_back(d);
     }
 
@@ -81,10 +80,11 @@ Java_com_intel_realsense_librealsense_DeviceWatcher_nRemoveUsbDevice(JNIEnv *env
     {
         auto d = std::static_pointer_cast<librealsense::platform::usb_device_usbhost>(dev);
         if(fileDescriptor == d->get_file_descriptor()){
-            d->release();
+//            d->release();
             LOG_DEBUG("RemoveUsbDevice, removing device: " << d->get_info().unique_id << ", descriptor: " << fileDescriptor);
             return true;
         }
+        return false;
     }), _devices.end());
 
     librealsense::platform::device_watcher_usbhost::instance()->notify();

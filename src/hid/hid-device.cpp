@@ -48,7 +48,7 @@ namespace librealsense
         }
 
         rs_hid_device::rs_hid_device(rs_usb_device usb_device)
-                : _usb_device(usb_device)
+            : _usb_device(usb_device)
         {
             _id_to_sensor[REPORT_ID_GYROMETER_3D] = gyro;
             _id_to_sensor[REPORT_ID_ACCELEROMETER_3D] = accel;
@@ -97,20 +97,21 @@ namespace librealsense
         void rs_hid_device::start_capture(hid_callback callback)
         {
             _callback = callback;
+            auto hid_interface = get_hid_interface()->get_number();
 
-            _messenger = _usb_device->open();
+            _messenger = _usb_device->open(hid_interface);
 
             _handle_interrupts_thread = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
-                                                                          {
-                                                                              handle_interrupt();
-                                                                          });
+            {
+                handle_interrupt();
+            });
 
             _handle_interrupts_thread->start();
 
             _poll_interrupts_thread = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
-                                                                        {
-                                                                            poll_for_interrupt();
-                                                                        });
+            {
+                poll_for_interrupt();
+            });
 
             _poll_interrupts_thread->start();
         }
@@ -164,21 +165,22 @@ namespace librealsense
         {
             uint32_t transferred;
 
-            auto dev = _usb_device->open();
+            auto hid_interface = get_hid_interface()->get_number();
+
+            auto dev = _usb_device->open(hid_interface);
 
             int value = (HID_REPORT_TYPE_FEATURE << 8) + report_id;
 
             FEATURE_REPORT featureReport;
-            auto hid_interface = get_hid_interface()->get_number();
 
             auto res = dev->control_transfer(USB_REQUEST_CODE_GET,
-                                             HID_REQUEST_GET_REPORT,
-                                             value,
-                                             hid_interface,
-                                             (uint8_t*) &featureReport,
-                                             sizeof(featureReport),
-                                             transferred,
-                                             1000);
+                HID_REQUEST_GET_REPORT,
+                value,
+                hid_interface,
+                (uint8_t*) &featureReport,
+                sizeof(featureReport),
+                transferred,
+                1000);
 
             if(res != RS2_USB_STATUS_SUCCESS)
             {
@@ -192,13 +194,13 @@ namespace librealsense
                 featureReport.report = (1000/fps);
 
             res = dev->control_transfer(USB_REQUEST_CODE_SET,
-                                        HID_REQUEST_SET_REPORT,
-                                        value,
-                                        hid_interface,
-                                        (uint8_t*) &featureReport,
-                                        sizeof(featureReport),
-                                        transferred,
-                                        1000);
+                HID_REQUEST_SET_REPORT,
+                value,
+                hid_interface,
+                (uint8_t*) &featureReport,
+                sizeof(featureReport),
+                transferred,
+                1000);
 
             if(res != RS2_USB_STATUS_SUCCESS)
             {
@@ -207,13 +209,13 @@ namespace librealsense
             }
 
             res = dev->control_transfer(USB_REQUEST_CODE_GET,
-                                        HID_REQUEST_GET_REPORT,
-                                        value,
-                                        hid_interface,
-                                        (uint8_t*) &featureReport,
-                                        sizeof(featureReport),
-                                        transferred,
-                                        1000);
+                HID_REQUEST_GET_REPORT,
+                value,
+                hid_interface,
+                (uint8_t*) &featureReport,
+                sizeof(featureReport),
+                transferred,
+                1000);
 
             if(res != RS2_USB_STATUS_SUCCESS)
             {
@@ -234,7 +236,7 @@ namespace librealsense
             auto intfs = _usb_device->get_interfaces();
 
             auto it = std::find_if(intfs.begin(), intfs.end(),
-                                   [](const rs_usb_interface& i) { return i->get_class() == RS2_USB_CLASS_HID; });
+                [](const rs_usb_interface& i) { return i->get_class() == RS2_USB_CLASS_HID; });
 
             if (it == intfs.end())
                 throw std::runtime_error("can't find HID interface of device: " + _usb_device->get_info().id);

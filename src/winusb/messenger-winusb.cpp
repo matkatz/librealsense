@@ -1,8 +1,6 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2015 Intel Corporation. All Rights Reserved.
 
-//#define HW_MONITOR_BUFFER_SIZE   (1024)
-
 #if (_MSC_FULL_VER < 180031101)
 #error At least Visual Studio 2013 Update 4 is required to compile this backend
 #endif
@@ -26,15 +24,20 @@ namespace librealsense
 {
     namespace platform
     {
-        usb_messenger_winusb::usb_messenger_winusb(const std::shared_ptr<usb_device_winusb> device)
-            : _device(device)
+        usb_messenger_winusb::usb_messenger_winusb(const std::shared_ptr<usb_device_winusb> device,
+            std::shared_ptr<handle_winusb> handle)
+            : _device(device), _handle(handle)
         {
 
         }
 
         usb_messenger_winusb::~usb_messenger_winusb()
         {
-
+            for (auto&& d : _dispatchers)
+            {
+                d.second->stop();
+                d.second.reset();
+            }
         }
 
         std::shared_ptr<usb_interface_winusb> usb_messenger_winusb::get_interface(int number)
@@ -61,15 +64,11 @@ namespace librealsense
             auto intf = get_interface(0xFF & index);
             if (!intf)
                 return RS2_USB_STATUS_INVALID_PARAM;
-            auto path = intf->get_device_path();
 
-            handle_winusb dh;
-            auto sts = dh.open(path);
-            if (sts != RS2_USB_STATUS_SUCCESS)
-                return sts;
-            auto h = dh.get_first_interface();
+            //auto h = _handle->get_first_interface();
+            auto h = _handle->get_interface_handle(intf->get_number());
 
-            sts = set_timeout_policy(h, 0, timeout_ms);
+            auto sts = set_timeout_policy(h, 0, timeout_ms);
             if (sts != RS2_USB_STATUS_SUCCESS)
                 return sts;
 
@@ -85,14 +84,7 @@ namespace librealsense
 
         usb_status usb_messenger_winusb::reset_endpoint(const rs_usb_endpoint& endpoint, uint32_t timeout_ms)
         {
-            auto intf = get_interface(endpoint->get_interface_number());
-            if (!intf)
-                return RS2_USB_STATUS_INVALID_PARAM;
-            handle_winusb dh;
-            auto sts = dh.open(intf->get_device_path());
-            if (sts != RS2_USB_STATUS_SUCCESS)
-                return sts;
-            auto h = dh.get_first_interface();
+            auto h = _handle->get_interface_handle(endpoint->get_interface_number());
 
             if (!WinUsb_ResetPipe(h, endpoint->get_address()))
             {
@@ -109,23 +101,27 @@ namespace librealsense
 
             auto intf = get_interface(endpoint->get_interface_number());
             if (!intf)
-                return RS2_USB_STATUS_INVALID_PARAM; 
-            handle_winusb dh;
-            auto sts = dh.open(intf->get_device_path());
-            if (sts != RS2_USB_STATUS_SUCCESS)
-                return sts;
-            auto h = dh.get_first_interface();
+                return RS2_USB_STATUS_INVALID_PARAM;
 
-            sts = set_timeout_policy(h, endpoint->get_address(), timeout_ms);
-            if (sts != RS2_USB_STATUS_SUCCESS)
-                return sts;
+            auto h = _handle->get_first_interface();
+
+            if (intf->get_subclass() == RS2_USB_SUBCLASS_VIDEO_STREAMING) //for sync streaming
+            {
+                h = _handle->get_interface_handle(endpoint->get_interface_number());
+            }
+            else
+            {
+                auto sts = set_timeout_policy(h, endpoint->get_address(), timeout_ms);
+                if (sts != RS2_USB_STATUS_SUCCESS)
+                    return sts;
+            }
 
             bool res;
             if (USB_ENDPOINT_DIRECTION_IN(endpoint->get_address()))
                 res = WinUsb_ReadPipe(h, endpoint->get_address(), const_cast<unsigned char*>(buffer), length, &length_transferred, NULL);
             else
                 res = WinUsb_WritePipe(h, endpoint->get_address(), const_cast<unsigned char*>(buffer), length, &length_transferred, NULL);
-            if(!res)
+            if (!res)
             {
                 auto lastResult = GetLastError();
                 LOG_ERROR("bulk_transfer failed, error: " << lastResult);
@@ -147,6 +143,70 @@ namespace librealsense
                 return winusb_status_to_rs(lastResult);
             }
             return RS2_USB_STATUS_SUCCESS;
+        }
+
+        rs_usb_request usb_messenger_winusb::create_request(rs_usb_endpoint endpoint)
+        {
+            auto rv = std::make_shared<usb_request_winusb>(_device, endpoint);
+            auto rh = rv->get_holder();
+            rh->request = rv;
+            return rv;
+        }
+
+        usb_status usb_messenger_winusb::submit_request(const rs_usb_request& request)
+        {
+            ULONG lengthTransferred = 0;
+            auto ep = request->get_endpoint();
+            auto in = ep->get_interface_number();
+            auto epa = request->get_endpoint()->get_address();
+            auto ovl = reinterpret_cast<OVERLAPPED*>(request->get_native_request());
+            auto h = _handle->get_interface_handle(in);
+
+            int res = WinUsb_ReadPipe(h, epa, request->get_buffer(), request->get_buffer_length(), &lengthTransferred, ovl);
+            if (0 != res)
+                return winusb_status_to_rs(res);
+
+            auto lastError = GetLastError();
+            if (lastError != ERROR_IO_PENDING)
+                return winusb_status_to_rs(lastError);
+
+            get_dispatcher(epa)->invoke([&, request, h, ovl](dispatcher::cancellable_timer c)
+            {
+                int timeout = 100;
+                ULONG lengthTransferred = 0;
+
+                auto sts = GetOverlappedResult(h, ovl, &lengthTransferred, TRUE);
+                if (sts)
+                {
+                    auto cb = request->get_callback();
+                    cb->callback(request);
+                }
+            });
+
+            return RS2_USB_STATUS_SUCCESS;
+        }
+
+        usb_status usb_messenger_winusb::cancel_request(const rs_usb_request& request)
+        {
+            auto ovl = reinterpret_cast<OVERLAPPED*>(request->get_native_request());
+            auto h = _handle->get_device_handle();
+
+            if(CancelIoEx(h, ovl))
+                return RS2_USB_STATUS_SUCCESS;
+
+            auto sts = GetLastError();
+            return winusb_status_to_rs(sts);
+        }
+
+        std::shared_ptr<dispatcher> usb_messenger_winusb::get_dispatcher(uint8_t endpoint)
+        {
+            std::lock_guard<std::mutex> lk(_mutex);
+            if (_dispatchers.find(endpoint) == _dispatchers.end())
+            {
+                _dispatchers[endpoint] = std::make_shared<dispatcher>(10);
+                _dispatchers[endpoint]->start();
+            }
+            return _dispatchers.at(endpoint);
         }
     }
 }

@@ -1,0 +1,71 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2019 Intel Corporation. All Rights Reserved.
+
+#include "request-libusb.h"
+#include "endpoint-libusb.h"
+#include "device-libusb.h"
+
+namespace librealsense
+{
+    namespace platform
+    {
+        void internal_callback(struct  libusb_transfer* transfer)
+        {
+            auto rh = reinterpret_cast<request_holder*>(transfer->user_data);
+            if(rh)
+            {
+                auto response = rh->request;
+                auto cb = response->get_callback();
+                cb->callback(response);
+            }
+        }
+
+        usb_request_libusb::usb_request_libusb(libusb_device_handle *dev_handle, rs_usb_endpoint endpoint)
+        {
+            _endpoint = endpoint;
+            _transfer = std::shared_ptr<libusb_transfer>(libusb_alloc_transfer(0), [](libusb_transfer* req)
+            {
+                libusb_free_transfer(req);
+            } );
+            libusb_fill_bulk_transfer(_transfer.get(), dev_handle, _endpoint->get_address(), NULL, 0, internal_callback, NULL, 0);
+
+            _request_holder = std::make_shared<request_holder>();
+            _transfer->user_data = _request_holder.get();
+        }
+
+        usb_request_libusb::~usb_request_libusb()
+        {
+
+        }
+
+        int usb_request_libusb::get_buffer_length()
+        {
+            return _transfer->length;
+        }
+
+        void usb_request_libusb::set_buffer_length(int length)
+        {
+            _transfer->length = length;
+        }
+
+        int usb_request_libusb::get_actual_length() const
+        {
+            return _transfer->actual_length;
+        }
+
+        void usb_request_libusb::set_buffer(uint8_t* buffer)
+        {
+            _transfer->buffer = buffer;
+        }
+
+        uint8_t* usb_request_libusb::get_buffer() const
+        {
+            return _transfer->buffer;
+        }
+
+        void* usb_request_libusb::get_native_request() const
+        {
+            return _transfer.get();
+        }
+    }
+}

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "types.h"
+
 #include <chrono>
 
 #include <libusb.h>
@@ -37,53 +38,59 @@ namespace librealsense
         class handle_libusb
         {
         public:
-            handle_libusb() : _interface(-1), _handle(NULL) {}
-            usb_status open(libusb_device* device, uint8_t interface)
+            handle_libusb(libusb_device* device, std::shared_ptr<usb_interface_libusb> interface) :
+                    _first_interface(interface)
             {
-                std::lock_guard<std::mutex> lock(_mutex);
-                release();
-                auto sts = libusb_open(device, &_handle);
-                if(sts != LIBUSB_SUCCESS)
-                    return libusb_status_to_rs(sts);
-
-                // libusb_set_auto_detach_kernel_driver(_handle, true);
-
-                if (libusb_kernel_driver_active(_handle, interface) == 1)//find out if kernel driver is attached
-                    if (libusb_detach_kernel_driver(_handle, interface) == 0)// detach driver from device if attached.
-                        LOG_DEBUG("handle_libusb - detach kernel driver");
-
-                sts = libusb_claim_interface(_handle, interface);
-                if(sts != LIBUSB_SUCCESS)
-                    return libusb_status_to_rs(sts);
-
-                _interface = interface;
-                return RS2_USB_STATUS_SUCCESS;
+                claim_interface(device, interface->get_number());
+                for(auto&& i : interface->get_associated_interfaces())
+                    claim_interface(device, i->get_number());
             }
 
             ~handle_libusb()
             {
-                std::lock_guard<std::mutex> lock(_mutex);
-                release();
+                for(auto&& h : _handles)
+                {
+                    if(h.second == NULL)
+                        continue;
+                    libusb_release_interface(h.second, h.first);
+                    if(h.first == _first_interface->get_number())
+                        libusb_close(h.second);
+                }
             }
 
-            libusb_device_handle* get_handle() { return _handle; }
+            libusb_device_handle* get_first_handle()
+            {
+                return _handles.at(_first_interface->get_number());
+            }
+
+            libusb_device_handle* get_handle(uint8_t interface)
+            {
+                return _handles.at(interface);
+            }
 
         private:
-            void release()
+            usb_status claim_interface(libusb_device* device, uint8_t interface)
             {
-                if(_handle != NULL)
-                {
-                    if(_interface != -1)
-                        libusb_release_interface(_handle, _interface);
-                    libusb_close(_handle);
-                }
-                _interface = -1;
-                _handle = NULL;
+                auto& h = _handles[interface];
+                auto sts = libusb_open(device, &h);
+                if(sts != LIBUSB_SUCCESS)
+                    return libusb_status_to_rs(sts);
+
+                // libusb_set_auto_detach_kernel_driver(h, true);
+
+                if (libusb_kernel_driver_active(h, interface) == 1)//find out if kernel driver is attached
+                    if (libusb_detach_kernel_driver(h, interface) == 0)// detach driver from device if attached.
+                        LOG_DEBUG("handle_libusb - detach kernel driver");
+
+                sts = libusb_claim_interface(h, interface);
+                if(sts != LIBUSB_SUCCESS)
+                    return libusb_status_to_rs(sts);
+
+                return RS2_USB_STATUS_SUCCESS;
             }
 
-            int _interface;
-            libusb_device_handle* _handle;
-            std::mutex _mutex;
+            std::shared_ptr<usb_interface_libusb> _first_interface;
+            std::map<int,libusb_device_handle*> _handles;
         };
     }
 }

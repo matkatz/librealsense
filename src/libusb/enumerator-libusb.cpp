@@ -11,27 +11,13 @@ namespace librealsense
 {
     namespace platform
     {
-        struct usb_context
-        {
-            static usb_context& instance()
-            {
-                static usb_context context;
-                return context;
-            }
-            ~usb_context() { libusb_exit(_ctx); }
-            libusb_context* get() { return _ctx; }
-        private:
-            usb_context() { libusb_init(&_ctx); }
-            struct libusb_context* _ctx;
-        };
-
         struct usb_device_list
         {
             usb_device_list(bool unref_devices = false) :
                 _list(NULL), _unref_devices(unref_devices), _count(0)
             {
-                auto ctx = usb_context::instance().get();
-                _count = libusb_get_device_list(ctx, &_list);
+                _ctx = std::make_shared<usb_context>();
+                _count = libusb_get_device_list(_ctx->get(), &_list);
             }
             ~usb_device_list()
             {
@@ -40,10 +26,12 @@ namespace librealsense
             libusb_device* get(uint8_t index) { return index < _count ? _list[index] : NULL; }
             size_t count() { return _count; }
 
+            std::shared_ptr<usb_context> get_context() { return _ctx; }
         private:
             libusb_device **_list;
             size_t _count;
             bool _unref_devices;
+            std::shared_ptr<usb_context> _ctx;
         };
 
         std::string get_usb_descriptors(libusb_device* usb_device)
@@ -141,7 +129,7 @@ namespace librealsense
 
                 try
                 {
-                    return std::make_shared<usb_device_libusb>(device, desc, info);
+                    return std::make_shared<usb_device_libusb>(device, desc, info, list.get_context());
                 }
                 catch(std::exception e)
                 {

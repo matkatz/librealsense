@@ -93,6 +93,7 @@ namespace librealsense
                 std::stringstream pid; pid << std::hex << matches[4]; pid >> rv.pid;
                 std::stringstream mi; mi << std::hex << matches[6]; mi >> rv.mi;
                 std::stringstream uid; uid << std::hex << matches[8]; uid >> rv.unique_id;
+                rv.cls = RS2_USB_CLASS_VIDEO;
                 return rv;
             }
             if (std::regex_search(device_str, matches, regex_usb_interface) && matches.size() == 9)
@@ -101,6 +102,7 @@ namespace librealsense
                 std::stringstream vid; vid << std::hex << matches[2]; vid >> rv.vid;
                 std::stringstream pid; pid << std::hex << matches[4]; pid >> rv.pid;
                 std::stringstream uid; uid << std::hex << matches[6]; uid >> rv.unique_id;
+                rv.cls = RS2_USB_CLASS_VENDOR_SPECIFIC;
                 return rv;
             }
             if (std::regex_search(device_str, matches, regex_dfu_interface))
@@ -109,6 +111,7 @@ namespace librealsense
                 std::stringstream vid; vid << std::hex << matches[2]; vid >> rv.vid;
                 std::stringstream pid; pid << std::hex << matches[4]; pid >> rv.pid;
                 std::stringstream uid; uid << std::hex << matches[6]; uid >> rv.unique_id;
+                rv.cls = RS2_USB_CLASS_UNSPECIFIED;
                 return rv;
             }
 
@@ -126,7 +129,6 @@ namespace librealsense
                     auto info = get_info(id.c_str());
                     if (info.vid == 0) //unsupported device
                         continue;
-                    info.cls = guid.second;
                     rv.push_back(info);
                 }
             }
