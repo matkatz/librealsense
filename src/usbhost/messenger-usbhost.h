@@ -38,12 +38,8 @@ namespace librealsense
 
         private:
             std::shared_ptr<usb_device_usbhost> _device;
-            std::shared_ptr<usb_endpoint_usbhost> _interrupt_endpoint;
-
             std::mutex _mutex;
             std::shared_ptr<handle_usbhost> _handle;
-
-            void claim_interface(int interface);
         };
     }
 }

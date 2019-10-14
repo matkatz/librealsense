@@ -15,7 +15,6 @@ namespace librealsense
 {
     namespace platform
     {
-        struct request_holder;
         class usb_request_callback;
         typedef std::shared_ptr<usb_request_callback> rs_usb_request_callback;
 
@@ -23,26 +22,23 @@ namespace librealsense
         {
         public:
             virtual rs_usb_endpoint get_endpoint() const = 0;
-            virtual void set_buffer_length(int length) = 0;
-            virtual int get_buffer_length() = 0;
-            virtual void set_buffer(uint8_t* buffer) = 0;
-            virtual uint8_t* get_buffer() const = 0;
             virtual int get_actual_length() const = 0;
             virtual void set_callback(rs_usb_request_callback callback) = 0;
             virtual rs_usb_request_callback get_callback() const = 0;
             virtual void set_client_data(void* data) = 0;
             virtual void* get_client_data() const = 0;
             virtual void* get_native_request() const = 0;
-            virtual std::shared_ptr<request_holder> get_holder() const = 0;
+            virtual const std::vector<uint8_t>& get_buffer() const = 0;
+            virtual void set_buffer(const std::vector<uint8_t>& buffer) = 0;
+
+        protected:
+            virtual void set_native_buffer_length(int length) = 0;
+            virtual int get_native_buffer_length() = 0;
+            virtual void set_native_buffer(uint8_t* buffer) = 0;
+            virtual uint8_t* get_native_buffer() const = 0;
         };
 
         typedef std::shared_ptr<usb_request> rs_usb_request;
-
-        struct request_holder
-        {
-            rs_usb_request request;
-            std::vector<uint8_t> buffer;
-        };
 
         class usb_request_base : public usb_request
         {
@@ -52,13 +48,20 @@ namespace librealsense
             virtual rs_usb_request_callback get_callback() const override { return _callback; }
             virtual void set_client_data(void* data) override { _client_data = data; }
             virtual void* get_client_data() const override { return _client_data; }
-            virtual std::shared_ptr<request_holder> get_holder()const override { return _request_holder; }
+            virtual const std::vector<uint8_t>& get_buffer() const override { return _buffer; }
+            virtual void set_buffer(const std::vector<uint8_t>& buffer) override
+            {
+                _buffer = buffer;
+                set_native_buffer(_buffer.data());
+                set_native_buffer_length(_buffer.size());
+            }
+
         protected:
             void* _client_data;
             rs_usb_request request;
             rs_usb_endpoint _endpoint;
+            std::vector<uint8_t> _buffer;
             rs_usb_request_callback _callback;
-            std::shared_ptr<request_holder> _request_holder;
         };
 
         class usb_request_callback {

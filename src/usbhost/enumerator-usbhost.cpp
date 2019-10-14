@@ -39,7 +39,7 @@ namespace librealsense
         {
             for(auto&& dev : _devices)
             {
-                if(info.unique_id == dev->get_info().unique_id)
+                if(info.id == dev->get_info().id)
                     return dev;
             }
             return nullptr;

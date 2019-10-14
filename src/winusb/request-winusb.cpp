@@ -15,8 +15,7 @@ namespace librealsense
             _overlapped = std::make_shared<OVERLAPPED>();
             _safe_handle = std::make_shared<safe_handle>(CreateEvent(nullptr, false, false, nullptr));
             _overlapped->hEvent = _safe_handle->GetHandle();
-            _request_holder = std::make_shared<request_holder>();
-            _client_data = _request_holder.get();
+            _client_data = this;
         }
 
         usb_request_winusb::~usb_request_winusb()
@@ -29,24 +28,24 @@ namespace librealsense
             return _overlapped->InternalHigh;// _request->actual_length;
         }
 
-        void usb_request_winusb::set_buffer_length(int length)
+        void usb_request_winusb::set_native_buffer_length(int length)
         {
-            _buffer_length = length;
+
         }
 
-        int usb_request_winusb::get_buffer_length()
+        int usb_request_winusb::get_native_buffer_length()
         {
-            return _buffer_length;
+            return _buffer.size();
         }
 
-        void usb_request_winusb::set_buffer(uint8_t* buffer)
+        void usb_request_winusb::set_native_buffer(uint8_t* buffer)
         {
-            _buffer = buffer;
+
         }
 
-        uint8_t* usb_request_winusb::get_buffer() const
+        uint8_t* usb_request_winusb::get_native_buffer() const
         {
-            return _buffer;
+            return NULL;
         }
 
         void* usb_request_winusb::get_native_request() const

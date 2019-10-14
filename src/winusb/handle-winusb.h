@@ -30,15 +30,25 @@ namespace librealsense
         class handle_winusb
         {
         public:
-            usb_status open(const std::wstring& path)
+            usb_status open(const std::wstring& path, uint32_t timeout_ms = 1000)
             {
-                _device_handle = CreateFile(path.c_str(),
-                    GENERIC_READ | GENERIC_WRITE,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    NULL,
-                    OPEN_EXISTING,
-                    FILE_FLAG_OVERLAPPED,
-                    NULL);
+                auto start = std::chrono::system_clock::now();
+                do
+                {
+                    _device_handle = CreateFile(path.c_str(),
+                        GENERIC_READ | GENERIC_WRITE,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL,
+                        OPEN_EXISTING,
+                        FILE_FLAG_OVERLAPPED,
+                        NULL);
+                auto end = std::chrono::system_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                if (elapsed > timeout_ms)
+                    break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                } while (_device_handle == INVALID_HANDLE_VALUE);
+
                 if (_device_handle == INVALID_HANDLE_VALUE)
                 {
                     auto lastResult = GetLastError();

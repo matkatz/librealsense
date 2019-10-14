@@ -2,7 +2,8 @@
 // Copyright(c) 2015 Intel Corporation. All Rights Reserved.
 
 #include "usb/usb-enumerator.h"
-#include "libusb/device-libusb.h"
+#include "device-libusb.h"
+#include "context-libusb.h"
 #include "types.h"
 
 #include <libusb.h>
@@ -11,49 +12,16 @@ namespace librealsense
 {
     namespace platform
     {
-        struct usb_device_list
+        std::string get_device_path(libusb_device* usb_device)
         {
-            usb_device_list(bool unref_devices = false) :
-                _list(NULL), _unref_devices(unref_devices), _count(0)
-            {
-                _ctx = std::make_shared<usb_context>();
-                _count = libusb_get_device_list(_ctx->get(), &_list);
-            }
-            ~usb_device_list()
-            {
-                libusb_free_device_list(_list, _unref_devices);
-            }
-            libusb_device* get(uint8_t index) { return index < _count ? _list[index] : NULL; }
-            size_t count() { return _count; }
+            int bus = libusb_get_bus_number(usb_device);
+            int address = libusb_get_device_address(usb_device);
+            std::stringstream ss;
+            ss << "/dev/bus/usb/"
+               << std::setw(3) << std::setfill('0') << bus << "/"
+               << std::setw(3) << std::setfill('0') << address;
 
-            std::shared_ptr<usb_context> get_context() { return _ctx; }
-        private:
-            libusb_device **_list;
-            size_t _count;
-            bool _unref_devices;
-            std::shared_ptr<usb_context> _ctx;
-        };
-
-        std::string get_usb_descriptors(libusb_device* usb_device)
-        {
-            auto usb_bus = std::to_string(libusb_get_bus_number(usb_device));
-
-            // As per the USB 3.0 specs, the current maximum limit for the depth is 7.
-            const auto max_usb_depth = 8;
-            uint8_t usb_ports[max_usb_depth] = {};
-            std::stringstream port_path;
-            auto port_count = libusb_get_port_numbers(usb_device, usb_ports, max_usb_depth);
-            auto usb_dev = std::to_string(libusb_get_device_address(usb_device));
-            auto speed = libusb_get_device_speed(usb_device);
-            libusb_device_descriptor dev_desc;
-            auto r= libusb_get_device_descriptor(usb_device,&dev_desc);
-
-            for (size_t i = 0; i < port_count; ++i)
-            {
-                port_path << std::to_string(usb_ports[i]) << (((i+1) < port_count)?".":"");
-            }
-
-            return usb_bus + "-" + port_path.str() + "-" + usb_dev;
+            return ss.str();
         }
 
         std::vector<usb_device_info> get_subdevices(libusb_device* device, libusb_device_descriptor desc)
@@ -77,10 +45,11 @@ namespace librealsense
                     // https://www.usb.org/defined-class-codes#anchor_BaseClassFEh
                     if(inf.altsetting->bInterfaceClass == RS2_USB_CLASS_APPLICATION_SPECIFIC)
                         continue;
-                    
+
                     usb_device_info info{};
-                    info.id = get_usb_descriptors(device);
-                    info.unique_id = get_usb_descriptors(device);
+                    auto path = get_device_path(device);
+                    info.id = path;
+                    info.unique_id = path;
                     info.conn_spec = usb_spec(desc.bcdUSB);
                     info.vid = desc.idVendor;
                     info.pid = desc.idProduct;
@@ -121,7 +90,7 @@ namespace librealsense
             for (ssize_t idx = 0; idx < list.count(); ++idx)
             {
                 auto device = list.get(idx);
-                if(device == NULL || get_usb_descriptors(device) != info.id)
+                if(device == NULL || get_device_path(device) != info.id)
                     continue;
 
                 libusb_device_descriptor desc = { 0 };

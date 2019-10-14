@@ -11,12 +11,15 @@ namespace librealsense
     {
         void internal_callback(struct  libusb_transfer* transfer)
         {
-            auto rh = reinterpret_cast<request_holder*>(transfer->user_data);
-            if(rh)
+            auto urb = reinterpret_cast<usb_request_libusb*>(transfer->user_data);
+            if(urb)
             {
-                auto response = rh->request;
-                auto cb = response->get_callback();
-                cb->callback(response);
+                auto response = urb->get_shared();
+                if(response)
+                {
+                    auto cb = response->get_callback();
+                    cb->callback(response); 
+                }
             }
         }
 
@@ -29,21 +32,20 @@ namespace librealsense
             } );
             libusb_fill_bulk_transfer(_transfer.get(), dev_handle, _endpoint->get_address(), NULL, 0, internal_callback, NULL, 0);
 
-            _request_holder = std::make_shared<request_holder>();
-            _transfer->user_data = _request_holder.get();
+            _transfer->user_data = this;
         }
 
         usb_request_libusb::~usb_request_libusb()
         {
-
+            _transfer->user_data = NULL;
         }
 
-        int usb_request_libusb::get_buffer_length()
+        int usb_request_libusb::get_native_buffer_length()
         {
             return _transfer->length;
         }
 
-        void usb_request_libusb::set_buffer_length(int length)
+        void usb_request_libusb::set_native_buffer_length(int length)
         {
             _transfer->length = length;
         }
@@ -53,12 +55,12 @@ namespace librealsense
             return _transfer->actual_length;
         }
 
-        void usb_request_libusb::set_buffer(uint8_t* buffer)
+        void usb_request_libusb::set_native_buffer(uint8_t* buffer)
         {
             _transfer->buffer = buffer;
         }
 
-        uint8_t* usb_request_libusb::get_buffer() const
+        uint8_t* usb_request_libusb::get_native_buffer() const
         {
             return _transfer->buffer;
         }
@@ -66,6 +68,16 @@ namespace librealsense
         void* usb_request_libusb::get_native_request() const
         {
             return _transfer.get();
+        }
+
+        std::shared_ptr<usb_request> usb_request_libusb::get_shared() const
+        {
+            return _shared.lock();
+        }
+
+        void usb_request_libusb::set_shared(const std::shared_ptr<usb_request>& shared)
+        {
+            _shared = shared;
         }
     }
 }

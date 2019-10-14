@@ -20,10 +20,12 @@ namespace librealsense
     {
         usb_device_info generate_info(::usb_device *handle, int mi, usb_spec conn_spec, usb_class cls)
         {
+            std::string name = usb_device_get_name(handle);
             usb_device_info rv{};
+            rv.id = name;
+            rv.unique_id = name;
             rv.vid = usb_device_get_vendor_id(handle);
             rv.pid = usb_device_get_product_id(handle);
-            rv.unique_id = std::string(usb_device_get_name(handle));
             rv.mi = mi;
             rv.cls = cls;
             rv.conn_spec = conn_spec;
@@ -102,13 +104,21 @@ namespace librealsense
             }
         }
 
+        const rs_usb_interface usb_device_usbhost::get_interface(uint8_t interface_number) const
+        {
+            auto it = std::find_if(_interfaces.begin(), _interfaces.end(),
+                                   [interface_number](const rs_usb_interface& i) { return interface_number == i->get_number(); });
+            if (it == _interfaces.end())
+                return nullptr;
+            return *it;
+        }
+
         const std::shared_ptr<usb_messenger> usb_device_usbhost::open(uint8_t interface_number)
         {
-            auto it = std::find_if(_interfaces.begin(), _interfaces.end(), [interface_number](const rs_usb_interface& i)
-                { return interface_number == i->get_number();});
-            if(it == _interfaces.end())
+            auto i = get_interface(interface_number);
+            if (!i)
                 return nullptr;
-            auto intf = std::dynamic_pointer_cast<usb_interface_usbhost>(*it);
+            auto intf = std::dynamic_pointer_cast<usb_interface_usbhost>(i);
             auto h = std::make_shared<handle_usbhost>(_handle, intf);
             return std::make_shared<usb_messenger_usbhost>(shared_from_this(), h);
         }
@@ -154,12 +164,16 @@ namespace librealsense
 
                 if(r)
                 {
-                    auto rh = (request_holder*)r->client_data;
-                    if(rh)
+                    auto urb = reinterpret_cast<usb_request_usbhost*>(r->client_data);
+
+                    if(urb)
                     {
-                        auto response = rh->request;
-                        auto cb = response->get_callback();
-                        cb->callback(response);
+                        auto response = urb->get_shared();
+                        if(response)
+                        {
+                            auto cb = response->get_callback();
+                            cb->callback(response);
+                        }
                     }
                 }
             });

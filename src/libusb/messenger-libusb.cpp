@@ -58,16 +58,6 @@ namespace librealsense
             return RS2_USB_STATUS_SUCCESS;
         }
 
-        std::shared_ptr<usb_interface_libusb> usb_messenger_libusb::get_interface(int number)
-        {
-            auto intfs = _device->get_interfaces();
-            auto it = std::find_if(intfs.begin(), intfs.end(),
-                                   [&](const rs_usb_interface& i) { return i->get_number() == number; });
-            if (it == intfs.end())
-                return nullptr;
-            return std::static_pointer_cast<usb_interface_libusb>(*it);
-        }
-
         usb_status usb_messenger_libusb::control_transfer(int request_type, int request, int value, int index, uint8_t* buffer, uint32_t length, uint32_t& transferred, uint32_t timeout_ms)
         {
             auto h = _handle->get_handle(index & 0xFF);
@@ -104,8 +94,7 @@ namespace librealsense
         rs_usb_request usb_messenger_libusb::create_request(rs_usb_endpoint endpoint)
         {
             auto rv = std::make_shared<usb_request_libusb>(_handle->get_handle(endpoint->get_interface_number()), endpoint);
-            auto rh = rv->get_holder();
-            rh->request = rv;
+            rv->set_shared(rv);
             return rv;
         }
 

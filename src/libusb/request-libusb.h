@@ -17,16 +17,21 @@ namespace librealsense
         public:
             usb_request_libusb(libusb_device_handle *dev_handle, rs_usb_endpoint endpoint);
             virtual ~usb_request_libusb();
-
-            virtual void set_buffer_length(int length) override;
-            virtual int get_buffer_length() override;
-            virtual void set_buffer(uint8_t* buffer) override;
-            virtual uint8_t* get_buffer() const override;
+            
             virtual int get_actual_length() const override;
             virtual void* get_native_request() const override;
 
+            std::shared_ptr<usb_request> get_shared() const;
+            void set_shared(const std::shared_ptr<usb_request>& shared);
+
+        protected:
+            virtual void set_native_buffer_length(int length) override;
+            virtual int get_native_buffer_length() override;
+            virtual void set_native_buffer(uint8_t* buffer) override;
+            virtual uint8_t* get_native_buffer() const override;
+
         private:
-            mutable std::vector<uint8_t> _buffer;
+            std::weak_ptr<usb_request> _shared;
             std::shared_ptr<libusb_transfer> _transfer;
         };
     }

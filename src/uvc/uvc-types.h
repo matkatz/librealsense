@@ -1,5 +1,11 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2019 Intel Corporation. All Rights Reserved.
+
 #pragma once
 
+#include "types.h"
+
+#include <vector>
 #include <unordered_map>
 
 /* UVC_COLOR_FORMAT_* have been replaced with UVC_FRAME_FORMAT_*. Please use
@@ -75,23 +81,23 @@ typedef enum uvc_error {
 enum uvc_frame_format {
     UVC_FRAME_FORMAT_UNKNOWN = 0,
     /** Any supported format */
-    UVC_FRAME_FORMAT_ANY = 0,
+            UVC_FRAME_FORMAT_ANY = 0,
     UVC_FRAME_FORMAT_UNCOMPRESSED,
     UVC_FRAME_FORMAT_COMPRESSED,
     /** YUYV/YUV2/YUV422: YUV encoding with one luminance value per pixel and
     * one UV (chrominance) pair for every two pixels.
     */
-    UVC_FRAME_FORMAT_YUYV,
+            UVC_FRAME_FORMAT_YUYV,
     UVC_FRAME_FORMAT_UYVY,
     /** 24-bit RGB */
-    UVC_FRAME_FORMAT_RGB,
+            UVC_FRAME_FORMAT_RGB,
     UVC_FRAME_FORMAT_BGR,
     /** Motion-JPEG (or JPEG) encoded images */
-    UVC_FRAME_FORMAT_MJPEG,
+            UVC_FRAME_FORMAT_MJPEG,
     UVC_FRAME_FORMAT_GRAY8,
     UVC_FRAME_FORMAT_BY8,
     /** Number of formats understood */
-    UVC_FRAME_FORMAT_COUNT,
+            UVC_FRAME_FORMAT_COUNT,
 };
 
 /** VideoControl interface descriptor subtype (A.5) */
@@ -264,7 +270,6 @@ typedef struct uvc_device_descriptor {
 } uvc_device_descriptor_t;
 
 typedef struct uvc_input_terminal {
-    struct uvc_input_terminal *prev, *next;
     /** Index of the terminal within the device */
     uint8_t bTerminalID;
     /** Type of terminal (e.g., camera) */
@@ -276,14 +281,9 @@ typedef struct uvc_input_terminal {
     uint64_t bmControls;
 } uvc_input_terminal_t;
 
-typedef struct uvc_output_terminal {
-    struct uvc_output_terminal *prev, *next;
-    /** @todo */
-} uvc_output_terminal_t;
 
 /** Represents post-capture processing functions */
 typedef struct uvc_processing_unit {
-    struct uvc_processing_unit *prev, *next;
     /** Index of the processing unit within the device */
     uint8_t bUnitID;
     /** Index of the terminal from which the device accepts images */
@@ -294,14 +294,12 @@ typedef struct uvc_processing_unit {
 
 /** Represents selector unit to connect other units */
 typedef struct uvc_selector_unit {
-    struct uvc_selector_unit *prev, *next;
     /** Index of the selector unit within the device */
     uint8_t bUnitID;
 } uvc_selector_unit_t;
 
 /** Custom processing or camera-control functions */
 typedef struct uvc_extension_unit {
-    struct uvc_extension_unit *prev, *next;
     /** Index of the extension unit within the device */
     uint8_t bUnitID;
     /** GUID identifying the extension unit */
@@ -347,6 +345,107 @@ typedef struct uvc_format {
     uint32_t fps;
     /** Interface number */
     uint8_t interfaceNumber;
-    /** next format */
-    struct uvc_format *next;
 } uvc_format_t;
+
+typedef struct uvc_frame_desc {
+    /** Type of frame, such as JPEG frame or uncompressed frme */
+    uvc_vs_desc_subtype bDescriptorSubtype;
+    /** Index of the frame within the list of specs available for this format */
+    uint8_t bFrameIndex;
+    uint8_t bmCapabilities;
+    /** Image width */
+    uint16_t wWidth;
+    /** Image height */
+    uint16_t wHeight;
+    /** Bitrate of corresponding stream at minimal frame rate */
+    uint32_t dwMinBitRate;
+    /** Bitrate of corresponding stream at maximal frame rate */
+    uint32_t dwMaxBitRate;
+    /** Maximum number of bytes for a video frame */
+    uint32_t dwMaxVideoFrameBufferSize;
+    /** Default frame interval (in 100ns units) */
+    uint32_t dwDefaultFrameInterval;
+    /** Minimum frame interval for continuous mode (100ns units) */
+    uint32_t dwMinFrameInterval;
+    /** Maximum frame interval for continuous mode (100ns units) */
+    uint32_t dwMaxFrameInterval;
+    /** Granularity of frame interval range for continuous mode (100ns) */
+    uint32_t dwFrameIntervalStep;
+    /** Frame intervals */
+    uint8_t bFrameIntervalType;
+    /** number of bytes per line */
+    uint32_t dwBytesPerLine;
+    /** Available frame rates, zero-terminated (in 100ns units) */
+    std::vector<uint32_t> intervals;
+} uvc_frame_desc_t;
+
+/** Format descriptor
+*
+* A "format" determines a stream's image type (e.g., raw YUYV or JPEG)
+* and includes many "frame" configurations.
+*/
+typedef struct uvc_format_desc {
+    /** Type of image stream, such as JPEG or uncompressed. */
+    enum uvc_vs_desc_subtype bDescriptorSubtype;
+    /** Identifier of this format within the VS interface's format list */
+    uint8_t bFormatIndex;
+    uint8_t bNumFrameDescriptors;
+    /** Format specifier */
+    union {
+        uint8_t guidFormat[16];
+        uint8_t fourccFormat[4];
+    };
+    /** Format-specific data */
+    union {
+        /** BPP for uncompressed stream */
+        uint8_t bBitsPerPixel;
+        /** Flags for JPEG stream */
+        uint8_t bmFlags;
+    };
+    /** Default {uvc_frame_desc} to choose given this format */
+    uint8_t bDefaultFrameIndex;
+    uint8_t bAspectRatioX;
+    uint8_t bAspectRatioY;
+    uint8_t bmInterlaceFlags;
+    uint8_t bCopyProtect;
+    uint8_t bVariableSize;
+    /** Available frame specifications for this format */
+    std::vector<uvc_frame_desc_t> frame_descs;
+} uvc_format_desc_t;
+
+template <typename T>
+T as(const std::vector<uint8_t>& data, size_t index)
+{
+    T rv = 0;
+    for(int i = 0; i < sizeof(T); i++)
+    {
+        rv += data[index + i] << (i*8);
+    }
+    return rv;
+}
+
+struct backend_frame;
+
+typedef librealsense::small_heap<backend_frame, 10> backend_frames_archive;
+
+struct backend_frame {
+    backend_frame() {}
+
+    // We don't want the frames to be overwritten at any point
+    // (deallocate resets item to "default" that we want to avoid)
+    backend_frame(const backend_frame &other) {}
+
+    backend_frame(backend_frame &&other) {}
+
+    backend_frame &operator=(const backend_frame &other) { return *this; }
+
+    std::vector<uint8_t> pixels;
+    librealsense::platform::frame_object fo;
+    backend_frames_archive *owner; // Keep pointer to owner for light-deleter
+};
+
+typedef void(*cleanup_ptr)(backend_frame *);
+
+// Unique_ptr is used as the simplest RAII, with static deleter
+typedef std::unique_ptr<backend_frame, cleanup_ptr> backend_frame_ptr;
+typedef single_consumer_queue<backend_frame_ptr> backend_frames_queue;

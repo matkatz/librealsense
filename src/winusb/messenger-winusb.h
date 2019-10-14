@@ -35,9 +35,7 @@ namespace librealsense
 
         private:
             std::shared_ptr<dispatcher> get_dispatcher(uint8_t endpoint);
-            std::shared_ptr<usb_interface_winusb> get_interface(int number);
             usb_status set_timeout_policy(WINUSB_INTERFACE_HANDLE handle, uint8_t endpoint, uint32_t timeout_ms);
-
 
             unsigned long _in_out_pipe_timeout_ms = 7000;
 

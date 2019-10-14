@@ -35,12 +35,6 @@ namespace librealsense
 
         }
 
-        void usb_messenger_usbhost::claim_interface(int interface)
-        {
-            usb_device_connect_kernel_driver(_device->get_handle(), interface, false);
-            usb_device_claim_interface(_device->get_handle(), interface);
-        }
-
         usb_status usb_messenger_usbhost::reset_endpoint(const rs_usb_endpoint& endpoint, uint32_t timeout_ms)
         {
             uint32_t transferred = 0;
@@ -87,8 +81,7 @@ namespace librealsense
         rs_usb_request usb_messenger_usbhost::create_request(rs_usb_endpoint endpoint)
         {
             auto rv = std::make_shared<usb_request_usbhost>(_device, endpoint);
-            auto rh = rv->get_holder();
-            rh->request = rv;
+            rv->set_shared(rv);
             return rv;
         }
 

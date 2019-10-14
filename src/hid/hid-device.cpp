@@ -120,7 +120,7 @@ namespace librealsense
                 if(r && r->get_actual_length() == sizeof(REALSENSE_HID_REPORT))
                 {
                     REALSENSE_HID_REPORT report;
-                    memcpy(&report, r->get_buffer(), r->get_actual_length());
+                    memcpy(&report, r->get_buffer().data(), r->get_actual_length());
                     _queue.enqueue(std::move(report));
                 }
 
@@ -136,10 +136,7 @@ namespace librealsense
             for(auto&& r : _requests)
             {
                 r = _messenger->create_request(get_hid_endpoint());
-                auto rh = r->get_holder();
-                rh->buffer.resize(sizeof(REALSENSE_HID_REPORT), 0);
-                r->set_buffer(rh->buffer.data());
-                r->set_buffer_length(rh->buffer.size());
+                r->set_buffer(std::vector<uint8_t>(sizeof(REALSENSE_HID_REPORT)));
                 r->set_callback(_request_callback);
             }
 

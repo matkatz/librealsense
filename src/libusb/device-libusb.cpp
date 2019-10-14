@@ -18,6 +18,7 @@ namespace librealsense
         usb_device_libusb::usb_device_libusb(libusb_device* device, const libusb_device_descriptor& desc, const usb_device_info& info, std::shared_ptr<usb_context> context) :
                 _device(device), _usb_device_descriptor(desc), _info(info), _context(context)
         {
+            libusb_ref_device(_device);
             libusb_open(_device, &_handle);
             usb_descriptor ud = {desc.bLength, desc.bDescriptorType, std::vector<uint8_t>(desc.bLength)};
             memcpy(ud.data.data(), &desc, desc.bLength);
@@ -90,13 +91,21 @@ namespace librealsense
             LOG_DEBUG("usb device: " << get_info().unique_id << ", released");
         }
 
-        std::shared_ptr<handle_libusb> usb_device_libusb::get_handle(uint8_t interface_number)
+        const rs_usb_interface usb_device_libusb::get_interface(uint8_t interface_number) const
         {
-            auto it = std::find_if(_interfaces.begin(), _interfaces.end(), [interface_number](const rs_usb_interface& i)
-            { return interface_number == i->get_number(); });
+            auto it = std::find_if(_interfaces.begin(), _interfaces.end(),
+                                   [interface_number](const rs_usb_interface& i) { return interface_number == i->get_number(); });
             if (it == _interfaces.end())
                 return nullptr;
-            auto intf = std::dynamic_pointer_cast<usb_interface_libusb>(*it);
+            return *it;
+        }
+
+        std::shared_ptr<handle_libusb> usb_device_libusb::get_handle(uint8_t interface_number)
+        {
+            auto i = get_interface(interface_number);
+            if (!i)
+                return nullptr;
+            auto intf = std::dynamic_pointer_cast<usb_interface_libusb>(i);
             return std::make_shared<handle_libusb>(_device, intf);
         }
 

@@ -42,7 +42,6 @@ namespace librealsense
 
             std::mutex _mutex;
             std::shared_ptr<handle_libusb> _handle;
-            std::shared_ptr<usb_interface_libusb> get_interface(int number);
         };
     }
 }

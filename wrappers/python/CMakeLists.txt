@@ -90,11 +90,8 @@ endif()
 
 if(${BACKEND} STREQUAL RS2_USE_WINUSB_UVC_BACKEND)
     list(APPEND RAW_RS
-        ../../src/win7/win7-uvc.cpp
-        ../../src/win7/win7-usb.cpp
-        ../../src/win7/win7-hid.cpp
-        ../../src/win7/win7-backend.cpp
-        ../../src/win7/winusb_uvc/winusb_uvc.cpp
+        ../../src/win7/rsusb-backend-windows.h
+        ../../src/win7/rsusb-backend-windows.cpp
     )
 endif()
 

@@ -48,16 +48,16 @@ namespace librealsense
             usb_request_winusb(rs_usb_device device, rs_usb_endpoint endpoint);
             virtual ~usb_request_winusb();
 
-            virtual void set_buffer_length(int length) override;
-            virtual int get_buffer_length() override;
-            virtual void set_buffer(uint8_t* buffer) override;
-            virtual uint8_t* get_buffer() const override;
             virtual int get_actual_length() const override;
             virtual void* get_native_request() const override;
 
+        protected:
+            virtual void set_native_buffer_length(int length) override;
+            virtual int get_native_buffer_length() override;
+            virtual void set_native_buffer(uint8_t* buffer) override;
+            virtual uint8_t* get_native_buffer() const override;
+
         private:
-            uint8_t* _buffer;
-            uint32_t _buffer_length;
             std::shared_ptr<OVERLAPPED> _overlapped; //https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-overlapped
             std::shared_ptr<safe_handle> _safe_handle;
         };
