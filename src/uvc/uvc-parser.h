@@ -60,7 +60,6 @@ namespace librealsense
             rs_usb_device                           _usb_device = nullptr;
 
             // uvc internal
-            usb_config_descriptor                   _usb_config_descriptor;
             uint16_t                                _bcd_uvc;
             int                                     _clock_frequency;
             uint8_t                                 _endpoint_address;

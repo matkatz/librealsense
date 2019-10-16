@@ -11,11 +11,7 @@
 #define SWAP_UINT32(x) (((x) >> 24) | (((x) & 0x00FF0000) >> 8) | (((x) & 0x0000FF00) << 8) | ((x) << 24))
 
 const int CONTROL_TRANSFER_TIMEOUT = 100;
-const int INTERRUPT_PACKET_SIZE = 6;
 const int INTERRUPT_BUFFER_SIZE = 1024;
-const int INTERRUPT_NOTIFICATION_INDEX = 5;
-const int DEPTH_SENSOR_OVERFLOW_NOTIFICATION = 11;
-const int COLOR_SENSOR_OVERFLOW_NOTIFICATION = 13;
 
 namespace librealsense
 {
@@ -113,22 +109,20 @@ namespace librealsense
 
         void rs_uvc_device::start_callbacks()
         {
-            _is_started = true;
+
         }
 
         void rs_uvc_device::stop_callbacks()
         {
-            _is_started = false;
+
         }
 
         void rs_uvc_device::close(stream_profile profile)
         {
-            _is_started = false;
-
             check_connection();
 
             for(auto&& s : _streamers)
-                stop_streaming(s);
+                s->stop();
 
             auto elem = std::find_if(_streams.begin(), _streams.end(), [&](const profile_and_callback &pac) {
                 return (pac.profile == profile && (pac.callback));
@@ -405,40 +399,19 @@ namespace librealsense
 
             auto ctrl = std::make_shared<uvc_stream_ctrl_t>();
             auto ret = get_stream_ctrl_format_size(selected_format, ctrl);
-            if (ret != UVC_SUCCESS) {
+            if (ret != RS2_USB_STATUS_SUCCESS) {
                 throw std::runtime_error("Failed to get control format size!");
             }
 
+            auto sts = query_stream_ctrl(ctrl, 0, UVC_SET_CUR);
+            if(sts != RS2_USB_STATUS_SUCCESS)
+                throw std::runtime_error("Failed to start streaming!");
+
             uvc_streamer_context usc = { profile, callback, ctrl, _usb_device, _messenger, _usb_request_count };
 
-            ret = start_streaming(usc);
-            if (ret != UVC_SUCCESS) {
-                throw std::runtime_error("Failed to start streaming!");
-            }
-        }
-
-        uvc_error_t rs_uvc_device::start_streaming(uvc_streamer_context usc)
-        {
-            uvc_error_t ret;
-
-            ret = query_stream_ctrl(usc.control, 0, UVC_SET_CUR);
-            if (ret != UVC_SUCCESS) {
-                return ret;
-            }
             auto streamer = std::make_shared<uvc_streamer>(usc);
             streamer->start();
             _streamers.push_back(streamer);
-
-            return UVC_SUCCESS;
-        }
-
-        uvc_error_t rs_uvc_device::stop_streaming(std::shared_ptr<uvc_streamer> streamer)
-        {
-            if(!streamer)
-                return UVC_ERROR_INVALID_PARAM;
-
-            streamer->stop();
-            return UVC_SUCCESS;
         }
 
         void rs_uvc_device::stop_stream_cleanup(const stream_profile &profile,
@@ -568,7 +541,7 @@ namespace librealsense
         bool rs_uvc_device::uvc_get_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len, uvc_req_code req_code) const
         {
             if (!_messenger)
-                return UVC_ERROR_NO_DEVICE;
+                return RS2_USB_STATUS_NO_DEVICE;
 
             uint32_t transferred;
             auto sts = _messenger->control_transfer(
@@ -583,7 +556,7 @@ namespace librealsense
         bool rs_uvc_device::uvc_set_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len)
         {
             if (!_messenger)
-                return UVC_ERROR_NO_DEVICE;
+                return RS2_USB_STATUS_NO_DEVICE;
 
             uint32_t transferred;
             auto sts = _messenger->control_transfer(
@@ -614,13 +587,7 @@ namespace librealsense
                      std::string buff = "";
                      for (int i = 0; i < response->get_actual_length(); i++)
                          buff += std::to_string(response->get_buffer()[i]) + ", ";
-                     LOG_DEBUG("interrupt event received: " << buff.c_str());
-                     if (response->get_actual_length() == INTERRUPT_PACKET_SIZE)
-                     {
-                         auto sts = response->get_buffer()[INTERRUPT_NOTIFICATION_INDEX];
-                         if (sts == DEPTH_SENSOR_OVERFLOW_NOTIFICATION || sts == COLOR_SENSOR_OVERFLOW_NOTIFICATION)
-                             LOG_ERROR("overflow status sent from the device");
-                     }
+                     LOG_WARNING("interrupt event received: " << buff.c_str());
                  }
                  _messenger->submit_request(_interrupt_request);
              });
@@ -645,25 +612,20 @@ namespace librealsense
         }
 
         // Probe (Set and Get) streaming control block
-        uvc_error_t rs_uvc_device::probe_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control)
+        usb_status rs_uvc_device::probe_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control)
         {
-            uvc_error_t ret;
-
             // Sending probe SET request - UVC_SET_CUR request in a probe/commit structure containing desired values for VS Format index, VS Frame index, and VS Frame Interval
             // UVC device will check the VS Format index, VS Frame index, and Frame interval properties to verify if possible and update the probe/commit structure if feasible
-            ret = query_stream_ctrl(control, 1, UVC_SET_CUR);
-            if (ret != UVC_SUCCESS) {
-                return ret;
-            }
+            auto sts = query_stream_ctrl(control, 1, UVC_SET_CUR);
+            if(sts != RS2_USB_STATUS_SUCCESS)
+                return sts;
 
             // Sending probe GET request - UVC_GET_CUR request to read the updated values from UVC device
-            ret = query_stream_ctrl(control, 1, UVC_GET_CUR);
-            if (ret != UVC_SUCCESS) {
-                return ret;
-            }
+            sts = query_stream_ctrl(control, 1, UVC_GET_CUR);
+                if(sts != RS2_USB_STATUS_SUCCESS)
+                    return sts;
 
-            /** @todo make sure that worked */
-            return UVC_SUCCESS;
+            return RS2_USB_STATUS_SUCCESS;
         }
 
         std::vector<uvc_format_t> rs_uvc_device::get_available_formats_all() const
@@ -695,7 +657,7 @@ namespace librealsense
             return rv;
         }
 
-        uvc_error_t rs_uvc_device::get_stream_ctrl_format_size(uvc_format_t format, const std::shared_ptr<uvc_stream_ctrl_t>& control)
+        usb_status rs_uvc_device::get_stream_ctrl_format_size(uvc_format_t format, const std::shared_ptr<uvc_stream_ctrl_t>& control)
         {
             for(auto&& s : _parser->get_formats())
             {
@@ -720,9 +682,9 @@ namespace librealsense
                                 /* get the max values -- we need the interface number to be able
                                 to do this */
                                 control->bInterfaceNumber = s.first;
-                                auto ret = query_stream_ctrl(control, 1, UVC_GET_MAX);
-                                if(ret != UVC_SUCCESS)
-                                    return ret;
+                                auto sts = query_stream_ctrl(control, 1, UVC_GET_MAX);
+                                if(sts != RS2_USB_STATUS_SUCCESS)
+                                    return sts;
 
                                 control->bmHint = (1 << 0); /* don't negotiate interval */
                                 control->bFormatIndex = curr_format.bFormatIndex;
@@ -734,10 +696,10 @@ namespace librealsense
                     }
                 }
             }
-            return UVC_ERROR_INVALID_PARAM;
+            return RS2_USB_STATUS_INVALID_PARAM;
         }
 
-        uvc_error_t rs_uvc_device::query_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& ctrl, uint8_t probe, int req)
+        usb_status rs_uvc_device::query_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& ctrl, uint8_t probe, int req)
         {
             uint8_t buf[48];
             size_t len;
@@ -806,8 +768,8 @@ namespace librealsense
 
             if (sts != RS2_USB_STATUS_SUCCESS) {
                 auto e = strerror(errno);
-                LOG_ERROR("Probe-commit control transfer failed with errno: " << errno << " - " << strerror(errno));
-                return (uvc_error_t) err;
+                LOG_ERROR("Probe-commit control transfer failed with errno: " << errno << " - " << e);
+                return sts;
             }
 
             /* now decode following a GET transfer */
@@ -844,7 +806,7 @@ namespace librealsense
                 else
                     ctrl->dwClockFrequency = _parser->get_clock_frequency();
             }
-            return UVC_SUCCESS;
+            return RS2_USB_STATUS_SUCCESS;
         }
 
         void rs_uvc_device::check_connection() const

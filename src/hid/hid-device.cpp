@@ -40,7 +40,7 @@ namespace librealsense
             auto devices = usb_enumerator::query_devices_info();
             for (auto&& usb_info : devices)
             {
-                if(usb_info.unique_id != info.unique_id)
+                if(usb_info.unique_id != info.unique_id || usb_info.cls != RS2_USB_CLASS_HID)
                     continue;
 
                 auto dev = usb_enumerator::create_usb_device(usb_info);
@@ -99,6 +99,8 @@ namespace librealsense
                 _messenger->cancel_request(r);
 
             _handle_interrupts_thread->stop();
+            
+            _messenger.reset();
         }
 
         void rs_hid_device::start_capture(hid_callback callback)
@@ -185,6 +187,9 @@ namespace librealsense
             auto hid_interface = get_hid_interface()->get_number();
 
             auto dev = _usb_device->open(hid_interface);
+
+            if (!dev)
+                return RS2_USB_STATUS_NO_DEVICE;
 
             auto res = dev->control_transfer(USB_REQUEST_CODE_GET,
                 HID_REQUEST_GET_REPORT,

@@ -18,9 +18,6 @@
 #include <chrono>
 #include <thread>
 
-#define LIBUVC_XFER_BUF_SIZE    ( 4 * 1024 * 1024 )
-#define MAX_USB_INTERFACES 20
-
 /** Converts an unaligned one-byte integer into an int8 */
 #define B_TO_BYTE(p) ((int8_t)(p)[0])
 
@@ -49,6 +46,7 @@
 #define SHORT_TO_SW(s, p) \
   (p)[0] = (uint8_t)(s); \
   (p)[1] = (uint8_t)((s) >> 8);
+
 /** Converts an int32 into an unaligned four-byte little-endian integer */
 #define INT_TO_DW(i, p) \
   (p)[0] = (uint8_t)(i); \
@@ -119,13 +117,10 @@ namespace librealsense
 
             void close_uvc_device();
 
-            uvc_error_t probe_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control);
-            uvc_error_t get_stream_ctrl_format_size(uvc_format_t format, const std::shared_ptr<uvc_stream_ctrl_t>& control);
-            uvc_error_t query_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control, uint8_t probe, int req);
+            usb_status probe_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control);
+            usb_status get_stream_ctrl_format_size(uvc_format_t format, const std::shared_ptr<uvc_stream_ctrl_t>& control);
+            usb_status query_stream_ctrl(const std::shared_ptr<uvc_stream_ctrl_t>& control, uint8_t probe, int req);
             std::vector<uvc_format_t> get_available_formats_all() const;
-
-            uvc_error_t start_streaming(uvc_streamer_context usc);
-            uvc_error_t stop_streaming(std::shared_ptr<uvc_streamer> streamer);
 
             bool uvc_get_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len, uvc_req_code req_code) const;
             bool uvc_set_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len);
@@ -144,15 +139,11 @@ namespace librealsense
             const uvc_device_info                   _info;
             power_state                             _power_state = D3; // power state change is unsupported
 
-            uint16_t                                _streamIndex;
             std::vector<profile_and_callback>       _streams;
-            std::mutex                              _streams_mutex;
 
-            std::shared_ptr<const backend>          _backend;
             std::string                             _location;
             std::vector<stream_profile>             _profiles;
             std::vector<frame_callback>             _frame_callbacks;
-            std::atomic<bool>                       _is_started = {false};
 
             rs_usb_device                           _usb_device = nullptr;
             rs_usb_messenger                        _messenger;
@@ -163,7 +154,6 @@ namespace librealsense
             mutable std::mutex                      _power_mutex;
 
             // uvc internal
-            usb_config_descriptor                   _usb_config_descriptor;
             std::shared_ptr<uvc_parser>             _parser;
             std::vector<std::shared_ptr<uvc_streamer>> _streamers;
         };

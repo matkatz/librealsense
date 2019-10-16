@@ -8,18 +8,6 @@
 #include <vector>
 #include <unordered_map>
 
-/* UVC_COLOR_FORMAT_* have been replaced with UVC_FRAME_FORMAT_*. Please use
- * UVC_FRAME_FORMAT_* instead of using these. */
-#define UVC_COLOR_FORMAT_UNKNOWN UVC_FRAME_FORMAT_UNKNOWN
-#define UVC_COLOR_FORMAT_UNCOMPRESSED UVC_FRAME_FORMAT_UNCOMPRESSED
-#define UVC_COLOR_FORMAT_COMPRESSED UVC_FRAME_FORMAT_COMPRESSED
-#define UVC_COLOR_FORMAT_YUYV UVC_FRAME_FORMAT_YUYV
-#define UVC_COLOR_FORMAT_UYVY UVC_FRAME_FORMAT_UYVY
-#define UVC_COLOR_FORMAT_RGB UVC_FRAME_FORMAT_RGB
-#define UVC_COLOR_FORMAT_BGR UVC_FRAME_FORMAT_BGR
-#define UVC_COLOR_FORMAT_MJPEG UVC_FRAME_FORMAT_MJPEG
-#define UVC_COLOR_FORMAT_GRAY8 UVC_FRAME_FORMAT_GRAY8
-
 // convert to standard fourcc codes
 const std::unordered_map<uint32_t, uint32_t> fourcc_map = {
         { 0x59382020, 0x47524559 },    /* 'GREY' from 'Y8  ' */
@@ -30,74 +18,29 @@ const std::unordered_map<uint32_t, uint32_t> fourcc_map = {
         { 0x52573136, 0x42595232 }     /* 'RW16' from 'BYR2' */
 };
 
-enum uvc_device_power_mode {
-    UVC_VC_VIDEO_POWER_MODE_FULL = 0x000b,
-    UVC_VC_VIDEO_POWER_MODE_DEVICE_DEPENDENT = 0x001b,
-};
-
-/** UVC error types, based on libusb errors
- * @ingroup diag
- */
-typedef enum uvc_error {
-    /** Success (no error) */
-            UVC_SUCCESS = 0,
-    /** Input/output error */
-            UVC_ERROR_IO = -1,
-    /** Invalid parameter */
-            UVC_ERROR_INVALID_PARAM = -2,
-    /** Access denied */
-            UVC_ERROR_ACCESS = -3,
-    /** No such device */
-            UVC_ERROR_NO_DEVICE = -4,
-    /** Entity not found */
-            UVC_ERROR_NOT_FOUND = -5,
-    /** Resource busy */
-            UVC_ERROR_BUSY = -6,
-    /** Operation timed out */
-            UVC_ERROR_TIMEOUT = -7,
-    /** Overflow */
-            UVC_ERROR_OVERFLOW = -8,
-    /** Pipe error */
-            UVC_ERROR_PIPE = -9,
-    /** System call interrupted */
-            UVC_ERROR_INTERRUPTED = -10,
-    /** Insufficient memory */
-            UVC_ERROR_NO_MEM = -11,
-    /** Operation not supported */
-            UVC_ERROR_NOT_SUPPORTED = -12,
-    /** Device is not UVC-compliant */
-            UVC_ERROR_INVALID_DEVICE = -50,
-    /** Mode not supported */
-            UVC_ERROR_INVALID_MODE = -51,
-    /** Resource has a callback (can't use polling and async) */
-            UVC_ERROR_CALLBACK_EXISTS = -52,
-    /** Undefined error */
-            UVC_ERROR_OTHER = -99
-} uvc_error_t;
-
 /** Color coding of stream, transport-independent
 * @ingroup streaming
 */
 enum uvc_frame_format {
     UVC_FRAME_FORMAT_UNKNOWN = 0,
     /** Any supported format */
-            UVC_FRAME_FORMAT_ANY = 0,
+    UVC_FRAME_FORMAT_ANY = 0,
     UVC_FRAME_FORMAT_UNCOMPRESSED,
     UVC_FRAME_FORMAT_COMPRESSED,
     /** YUYV/YUV2/YUV422: YUV encoding with one luminance value per pixel and
     * one UV (chrominance) pair for every two pixels.
     */
-            UVC_FRAME_FORMAT_YUYV,
+    UVC_FRAME_FORMAT_YUYV,
     UVC_FRAME_FORMAT_UYVY,
     /** 24-bit RGB */
-            UVC_FRAME_FORMAT_RGB,
+    UVC_FRAME_FORMAT_RGB,
     UVC_FRAME_FORMAT_BGR,
     /** Motion-JPEG (or JPEG) encoded images */
-            UVC_FRAME_FORMAT_MJPEG,
+    UVC_FRAME_FORMAT_MJPEG,
     UVC_FRAME_FORMAT_GRAY8,
     UVC_FRAME_FORMAT_BY8,
     /** Number of formats understood */
-            UVC_FRAME_FORMAT_COUNT,
+    UVC_FRAME_FORMAT_COUNT,
 };
 
 /** VideoControl interface descriptor subtype (A.5) */
