@@ -7,6 +7,7 @@
 const int UVC_PAYLOAD_MAX_HEADER_LENGTH         = 256;
 const int DEQUEUE_MILLISECONDS_TIMEOUT          = 50;
 const int ENDPOINT_RESET_MILLISECONDS_TIMEOUT   = 100;
+const int WATCHDOG_RESET_MILLISECONDS_TIMEOUT   = 1000;
 
 void cleanup_frame(backend_frame *ptr) {
     if (ptr) ptr->owner->deallocate(ptr);
@@ -27,6 +28,7 @@ namespace librealsense
             _read_buff_length = UVC_PAYLOAD_MAX_HEADER_LENGTH + _context.control->dwMaxVideoFrameSize;
             LOG_INFO("endpoint " << (int)_read_endpoint->get_address() << " read buffer size: " << _read_buff_length);
 
+            _watchdog_timeout = (1000.0 / _context.profile.fps) * 10;
             init();
         }
 
@@ -92,22 +94,35 @@ namespace librealsense
                 }
             });
 
-            _request_callback = std::make_shared<usb_request_callback>([&](platform::rs_usb_request r)
+            _watchdog = std::make_shared<watchdog>([this]()
+                         {
+                             _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
+                             LOG_ERROR("uvc streamer watchdog triggered on endpoint: " << (int)_read_endpoint->get_address());
+                             _watchdog->set_timeout(WATCHDOG_RESET_MILLISECONDS_TIMEOUT);
+                         }, _watchdog_timeout);
+
+            _request_callback = std::make_shared<usb_request_callback>([this](platform::rs_usb_request r)
             {
-                if(r && r->get_actual_length() >= _context.control->dwMaxVideoFrameSize)
+                if(!r)
+                    return;
+                if(!_watchdog->running())
+                    _watchdog->start();
+                _watchdog->set_timeout(_watchdog_timeout);
+                if(r->get_actual_length() >= _context.control->dwMaxVideoFrameSize)
                 {
                     auto f = backend_frame_ptr(_frames_archive->allocate(), &cleanup_frame);
                     if(f)
                     {
+                        _watchdog->kick();
                         memcpy(f->pixels.data(), r->get_buffer().data(), r->get_buffer().size());
                         uvc_process_bulk_payload(std::move(f), r->get_actual_length(), _queue);
                     }
                 }
-                if(running() && r)
+                if(running())
                 {
                     auto sts = _context.messenger->submit_request(r);
                     if(sts != platform::RS2_USB_STATUS_SUCCESS)
-                        LOG_ERROR("failed to submit UVC request");
+                        LOG_ERROR("failed to submit UVC request, error: " << sts);
                 }
             });
 
@@ -158,6 +173,7 @@ namespace librealsense
 
             _context.messenger->reset_endpoint(_read_endpoint, RS2_USB_ENDPOINT_DIRECTION_READ);
 
+            _watchdog->stop();
             _publish_frame_thread->stop();
         }
 
@@ -167,6 +183,7 @@ namespace librealsense
 
             _read_endpoint.reset();
 
+            _watchdog.reset();
             _publish_frame_thread.reset();
             _request_callback.reset();
 
