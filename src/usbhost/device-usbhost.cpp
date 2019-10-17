@@ -91,6 +91,8 @@ namespace librealsense
 
             _usb_device_descriptor = usb_device_get_device_descriptor(_handle);
 
+            _request_pool = std::make_shared<request_pool>(_handle);
+
             _dispatcher = std::make_shared<dispatcher>(10);
             _dispatcher->start();
         }

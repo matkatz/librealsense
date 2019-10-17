@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "request-pool.h"
 #include "../usb/usb-types.h"
 #include "messenger-usbhost.h"
 #include "../usb/usb-device.h"
@@ -54,6 +55,7 @@ namespace librealsense
             const std::vector<usb_device_info> get_subdevices_info() const { return _infos; }
             usb_status submit_request(const rs_usb_request& request);
             usb_status cancel_request(const rs_usb_request& request);
+            std::shared_ptr<::usb_request> get_request(usb_endpoint_descriptor desc) { return _request_pool->get_request(desc); }
 
         private:
             ::usb_device *_handle;
@@ -61,6 +63,7 @@ namespace librealsense
             std::vector<usb_device_info> _infos;
             std::vector<rs_usb_interface> _interfaces;
             std::vector<usb_descriptor> _descriptors;
+            std::shared_ptr<request_pool> _request_pool;
 
             std::mutex _mutex;
             std::shared_ptr<dispatcher> _dispatcher;

@@ -15,8 +15,7 @@ namespace librealsense
             auto dev = std::static_pointer_cast<usb_device_usbhost>(device);
             auto read_ep = std::static_pointer_cast<usb_endpoint_usbhost>(_endpoint);
             auto desc = read_ep->get_descriptor();
-            _native_request = std::shared_ptr<::usb_request>(usb_request_new(dev->get_handle(), &desc),
-                    [](::usb_request* req) { /*TODO: usb_request_free(req);*/ });
+            _native_request = dev->get_request(desc);
             _native_request->client_data = this;
         }
 
