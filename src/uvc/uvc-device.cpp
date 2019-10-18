@@ -605,9 +605,6 @@ namespace librealsense
 
         void rs_uvc_device::close_uvc_device()
         {
-            if(_interrupt_callback)
-                _interrupt_callback->cancel();
-
             {
                 std::lock_guard<std::mutex> lock(_interrupt_mutex);
 
