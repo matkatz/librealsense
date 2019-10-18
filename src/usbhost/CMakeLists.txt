@@ -4,8 +4,6 @@ target_sources(${LRS_TARGET}
     PRIVATE    
         "${CMAKE_CURRENT_LIST_DIR}/handle-usbhost.h"
         
-        "${CMAKE_CURRENT_LIST_DIR}/request-pool.h"
-        
         "${CMAKE_CURRENT_LIST_DIR}/usbhost.h"
         "${CMAKE_CURRENT_LIST_DIR}/usbhost.c"
         
