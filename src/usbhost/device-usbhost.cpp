@@ -130,6 +130,8 @@ namespace librealsense
 
         usb_status usb_device_usbhost::submit_request(const rs_usb_request& request)
         {
+            std::lock_guard<std::mutex> lk(_mutex);
+
             auto nr = reinterpret_cast<::usb_request*>(request->get_native_request());
             auto sts = usb_request_queue(nr);
             if(sts < 0)
@@ -138,12 +140,15 @@ namespace librealsense
                 LOG_WARNING("usb_request_queue returned error, endpoint: " << (int)request->get_endpoint()->get_address() << " error: " << strerr << ", number: " << (int)errno);
                 return usbhost_status_to_rs(errno);
             }
+            _active_requsts.push_back(request);
             invoke();
             return RS2_USB_STATUS_SUCCESS;
         }
 
         usb_status usb_device_usbhost::cancel_request(const rs_usb_request& request)
         {
+            std::lock_guard<std::mutex> lk(_mutex);
+
             auto nr = reinterpret_cast<::usb_request*>(request->get_native_request());
             auto sts = usb_request_cancel(nr);
 
@@ -174,6 +179,12 @@ namespace librealsense
                             auto cb = response->get_callback();
                             cb->callback(response);
                         }
+
+                        std::lock_guard<std::mutex> lk(_mutex);
+                        auto it = std::find_if(_active_requsts.begin(), _active_requsts.end(),
+                                [response] (const rs_usb_request& urb) { return urb == response; });
+                        if(it != _active_requsts.end())
+                            _active_requsts.erase(it);
                     }
                 }
             });

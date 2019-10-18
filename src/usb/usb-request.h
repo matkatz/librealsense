@@ -66,27 +66,17 @@ namespace librealsense
 
         class usb_request_callback {
             std::function<void(rs_usb_request)> _callback;
-            std::mutex _mutex;
         public:
-            usb_request_callback(std::function<void(rs_usb_request)> callback)
+            usb_request_callback(std::function<void(rs_usb_request)> callback) : 
+                _callback(callback)
             {
-                _callback = callback;
+                if(!_callback)
+                    throw std::runtime_error("empty callback function");
             }
-
-            ~usb_request_callback()
-            {
-                cancel();
-            }
-
-            void cancel() {
-                std::lock_guard<std::mutex> lk(_mutex);
-                _callback = nullptr;
-            }
+            ~usb_request_callback() {}
 
             void callback(rs_usb_request response) {
-                std::lock_guard<std::mutex> lk(_mutex);
-                if (_callback)
-                    _callback(response);
+                _callback(response);
             }
         };
     }

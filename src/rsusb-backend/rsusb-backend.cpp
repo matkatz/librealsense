@@ -30,7 +30,10 @@ namespace librealsense
         std::shared_ptr<uvc_device> rs_backend::create_uvc_device(uvc_device_info info) const
         {
             LOG_DEBUG("Creating UVC Device from path: " << info.device_path.c_str());
-            return std::make_shared<retry_controls_work_around>(create_rsuvc_device(info));
+            auto dev = create_rsuvc_device(info);
+            if (!dev)
+                return nullptr;
+            return std::make_shared<retry_controls_work_around>(dev);
         }
 
         std::vector<uvc_device_info> rs_backend::query_uvc_devices() const {
