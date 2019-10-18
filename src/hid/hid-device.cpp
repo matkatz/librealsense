@@ -99,7 +99,7 @@ namespace librealsense
                     return;
                 _running = false;
 
-                for (auto &&r : _requests)
+                for (auto&& r : _requests)
                 {
                     _messenger->cancel_request(r);
                     r.reset();

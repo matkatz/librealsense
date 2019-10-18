@@ -577,32 +577,37 @@ namespace librealsense
             if(!iep)
                 return;
 
-            if(!_interrupt_callback)
-                _interrupt_callback = std::make_shared<usb_request_callback>
-                ([&](rs_usb_request response)
-                 {
-                     //TODO:MK Should call the sensor to handle via callback
-                     if (response->get_actual_length() > 0)
+            _interrupt_callback = std::make_shared<usb_request_callback>
+                    ([&](rs_usb_request response)
                      {
-                         std::string buff = "";
-                         for (int i = 0; i < response->get_actual_length(); i++)
-                             buff += std::to_string(response->get_buffer()[i]) + ", ";
-                         LOG_WARNING("interrupt event received: " << buff.c_str());
-                     }
+                         //TODO:MK Should call the sensor to handle via callback
+                         if (response->get_actual_length() > 0)
+                         {
+                             std::string buff = "";
+                             for (int i = 0; i < response->get_actual_length(); i++)
+                                 buff += std::to_string(response->get_buffer()[i]) + ", ";
+                             LOG_WARNING("interrupt event received: " << buff.c_str());
+                         }
 
-                     std::lock_guard<std::mutex> lock(_interrupt_mutex);
-                     if(_interrupt_request)
-                        _messenger->submit_request(_interrupt_request);
-                 });
+                         std::lock_guard<std::mutex> lock(_interrupt_mutex);
+                         if(_interrupt_request)
+                             _messenger->submit_request(_interrupt_request);
+                     });
 
-            _interrupt_request = _messenger->create_request(iep);
-            _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
-            _interrupt_request->set_callback(_interrupt_callback);
+            {
+                std::lock_guard<std::mutex> lock(_interrupt_mutex);
+                _interrupt_request = _messenger->create_request(iep);
+                _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
+                _interrupt_request->set_callback(_interrupt_callback);
+            }
             _messenger->submit_request(_interrupt_request);
         }
 
         void rs_uvc_device::close_uvc_device()
         {
+            if(_interrupt_callback)
+                _interrupt_callback->cancel();
+
             {
                 std::lock_guard<std::mutex> lock(_interrupt_mutex);
 
