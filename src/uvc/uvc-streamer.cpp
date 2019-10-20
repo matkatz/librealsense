@@ -117,17 +117,17 @@ namespace librealsense
                     auto f = backend_frame_ptr(_frames_archive->allocate(), &cleanup_frame);
                     if(f)
                     {
+                        _frame_arrived = true;
                         _watchdog->kick();
                         memcpy(f->pixels.data(), r->get_buffer().data(), r->get_buffer().size());
                         uvc_process_bulk_payload(std::move(f), r->get_actual_length(), _queue);
                     }
                 }
+
                 auto sts = _context.messenger->submit_request(r);
                 if(sts != platform::RS2_USB_STATUS_SUCCESS)
                     LOG_ERROR("failed to submit UVC request, error: " << sts);
             });
-
-            _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
 
             _requests = std::vector<rs_usb_request>(_context.request_count);
             for(auto&& r : _requests)
@@ -165,6 +165,8 @@ namespace librealsense
 
                 _running = false;
 
+                _request_callback->cancel();
+
                 _watchdog->stop();
 
                 for(auto&& r : _requests)
@@ -194,6 +196,19 @@ namespace librealsense
             _request_callback.reset();
 
             _frames_archive.reset();
+        }
+
+        bool uvc_streamer::wait_for_first_frame(uint32_t timeout_ms)
+        {
+            auto start = std::chrono::system_clock::now();
+            while(!_frame_arrived)
+            {
+                auto end = std::chrono::system_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                if(duration > timeout_ms)
+                    break;
+            }
+            return _frame_arrived;
         }
     }
 }

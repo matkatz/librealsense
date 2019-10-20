@@ -12,6 +12,7 @@
 
 const int CONTROL_TRANSFER_TIMEOUT = 100;
 const int INTERRUPT_BUFFER_SIZE = 1024;
+const int FIRST_FRAME_MILLISECONDS_TIMEOUT = 2000;
 
 namespace librealsense
 {
@@ -412,6 +413,18 @@ namespace librealsense
             auto streamer = std::make_shared<uvc_streamer>(usc);
             streamer->start();
             _streamers.push_back(streamer);
+
+            if(_streamers.size() == _profiles.size())
+            {
+                for(auto&& s : _streamers)
+                {
+                    if(!s->wait_for_first_frame(FIRST_FRAME_MILLISECONDS_TIMEOUT))
+                    {
+                        LOG_ERROR("Failed to start streaming, no frames received!");
+                        throw std::runtime_error("Failed to start streaming, no frames received!");
+                    }
+                }
+            }
         }
 
         void rs_uvc_device::stop_stream_cleanup(const stream_profile &profile,
