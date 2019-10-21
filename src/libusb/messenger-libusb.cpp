@@ -103,9 +103,12 @@ namespace librealsense
             auto nr = reinterpret_cast<libusb_transfer*>(request->get_native_request());
             if(nr->dev_handle == NULL)
                 return RS2_USB_STATUS_NO_DEVICE;
+            auto req = std::dynamic_pointer_cast<usb_request_libusb>(request);
+            req->set_active(true);
             auto sts = libusb_submit_transfer(nr);
             if (sts < 0)
             {
+                req->set_active(false);
                 std::string strerr = strerror(errno);
                 LOG_WARNING("usb_request_queue returned error, endpoint: " << (int)request->get_endpoint()->get_address() << " error: " << strerr << ", number: " << (int)errno);
                 return libusb_status_to_rs(errno);

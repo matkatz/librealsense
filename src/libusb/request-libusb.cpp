@@ -14,11 +14,12 @@ namespace librealsense
             auto urb = reinterpret_cast<usb_request_libusb*>(transfer->user_data);
             if(urb)
             {
+                urb->set_active(false);
                 auto response = urb->get_shared();
                 if(response)
                 {
                     auto cb = response->get_callback();
-                    cb->callback(response); 
+                    cb->callback(response);
                 }
             }
         }
@@ -37,7 +38,17 @@ namespace librealsense
 
         usb_request_libusb::~usb_request_libusb()
         {
-            _transfer->user_data = NULL;
+            if(_active)
+                libusb_cancel_transfer(_transfer.get());
+
+            while(_active)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        void usb_request_libusb::set_active(bool state)
+        {
+            std::lock_guard<std::mutex> lk(_mutex);
+            _active = state;
         }
 
         int usb_request_libusb::get_native_buffer_length()
