@@ -80,9 +80,12 @@ namespace librealsense
             bool running() { return _running; }
             void start();
             void stop();
+            bool wait_for_first_frame(uint32_t timeout_ms);
 
         private:
             bool _running = false;
+            bool _frame_arrived = false;
+
             std::mutex _mutex;
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;

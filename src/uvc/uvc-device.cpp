@@ -12,6 +12,7 @@
 
 const int CONTROL_TRANSFER_TIMEOUT = 100;
 const int INTERRUPT_BUFFER_SIZE = 1024;
+const int FIRST_FRAME_MILLISECONDS_TIMEOUT = 2000;
 
 namespace librealsense
 {
@@ -412,6 +413,18 @@ namespace librealsense
             auto streamer = std::make_shared<uvc_streamer>(usc);
             streamer->start();
             _streamers.push_back(streamer);
+
+            if(_streamers.size() == _profiles.size())
+            {
+                for(auto&& s : _streamers)
+                {
+                    if(!s->wait_for_first_frame(FIRST_FRAME_MILLISECONDS_TIMEOUT))
+                    {
+                        LOG_ERROR("Failed to start streaming, no frames received!");
+                        throw std::runtime_error("Failed to start streaming, no frames received!");
+                    }
+                }
+            }
         }
 
         void rs_uvc_device::stop_stream_cleanup(const stream_profile &profile,
@@ -578,32 +591,42 @@ namespace librealsense
                 return;
 
             _interrupt_callback = std::make_shared<usb_request_callback>
-            ([&](rs_usb_request response)
-             {
-                 //TODO:MK status check is currently for d4xx only,
-                 //Should call the sensor to handle via callback
-                 if (response->get_actual_length() > 0)
-                 {
-                     std::string buff = "";
-                     for (int i = 0; i < response->get_actual_length(); i++)
-                         buff += std::to_string(response->get_buffer()[i]) + ", ";
-                     LOG_WARNING("interrupt event received: " << buff.c_str());
-                 }
-                 _messenger->submit_request(_interrupt_request);
-             });
+                    ([&](rs_usb_request response)
+                     {
+                         //TODO:MK Should call the sensor to handle via callback
+                         if (response->get_actual_length() > 0)
+                         {
+                             std::string buff = "";
+                             for (int i = 0; i < response->get_actual_length(); i++)
+                                 buff += std::to_string(response->get_buffer()[i]) + ", ";
+                             LOG_WARNING("interrupt event received: " << buff.c_str());
+                         }
 
-            _interrupt_request = _messenger->create_request(iep);
-            _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
-            _interrupt_request->set_callback(_interrupt_callback);
+                         std::lock_guard<std::mutex> lock(_interrupt_mutex);
+                         if(_interrupt_request)
+                             _messenger->submit_request(_interrupt_request);
+                     });
+
+            {
+                std::lock_guard<std::mutex> lock(_interrupt_mutex);
+                _interrupt_request = _messenger->create_request(iep);
+                _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
+                _interrupt_request->set_callback(_interrupt_callback);
+            }
             _messenger->submit_request(_interrupt_request);
         }
 
         void rs_uvc_device::close_uvc_device()
         {
-            if(_interrupt_callback)
-                _interrupt_callback->cancel();
-            if(_interrupt_request)
-                _messenger->cancel_request(_interrupt_request);
+            {
+                std::lock_guard<std::mutex> lock(_interrupt_mutex);
+
+                if(_interrupt_request)
+                {
+                    _messenger->cancel_request(_interrupt_request);
+                    _interrupt_request.reset();
+                }
+            }
 
             _streamers.clear();
 

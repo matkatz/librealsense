@@ -91,12 +91,32 @@ namespace librealsense
 
             _usb_device_descriptor = usb_device_get_device_descriptor(_handle);
 
+            for(auto&& i : get_interfaces())
+            {
+                for(auto&& e : i->get_endpoints())
+                {
+                    if(e->get_direction() != RS2_USB_ENDPOINT_DIRECTION_READ)
+                        continue;
+                    auto type = e->get_type();
+                    if(type == RS2_USB_ENDPOINT_INTERRUPT || type == RS2_USB_ENDPOINT_BULK)
+                    {
+                        _dispatchers[e->get_address()] = std::make_shared<dispatcher>(10);
+                        auto d = _dispatchers.at(e->get_address());
+                        d->start();
+                    }
+                }
+            }
             _dispatcher = std::make_shared<dispatcher>(10);
             _dispatcher->start();
         }
 
         usb_device_usbhost::~usb_device_usbhost()
         {
+            for(auto&& d : _dispatchers)
+            {
+                d.second->stop();
+            }
+
             if(_dispatcher)
             {
                 _dispatcher->stop();
@@ -131,9 +151,12 @@ namespace librealsense
         usb_status usb_device_usbhost::submit_request(const rs_usb_request& request)
         {
             auto nr = reinterpret_cast<::usb_request*>(request->get_native_request());
+            auto req = std::dynamic_pointer_cast<usb_request_usbhost>(request);
+            req->set_active(true);
             auto sts = usb_request_queue(nr);
             if(sts < 0)
             {
+                req->set_active(false);
                 std::string strerr = strerror(errno);
                 LOG_WARNING("usb_request_queue returned error, endpoint: " << (int)request->get_endpoint()->get_address() << " error: " << strerr << ", number: " << (int)errno);
                 return usbhost_status_to_rs(errno);
@@ -168,11 +191,15 @@ namespace librealsense
 
                     if(urb)
                     {
+                        urb->set_active(false);
+
                         auto response = urb->get_shared();
                         if(response)
                         {
                             auto cb = response->get_callback();
-                            cb->callback(response);
+                            auto d = _dispatchers.at(response->get_endpoint()->get_address());
+                            d->invoke([cb, response](dispatcher::cancellable_timer t)
+                            { cb->callback(response); } );
                         }
                     }
                 }

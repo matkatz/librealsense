@@ -103,30 +103,31 @@ namespace librealsense
 
             _request_callback = std::make_shared<usb_request_callback>([this](platform::rs_usb_request r)
             {
-                if(!r)
+                std::lock_guard<std::mutex> lk(_mutex);
+
+                if(!running())
                     return;
+
                 if(!_watchdog->running())
                     _watchdog->start();
                 _watchdog->set_timeout(_watchdog_timeout);
+
                 if(r->get_actual_length() >= _context.control->dwMaxVideoFrameSize)
                 {
                     auto f = backend_frame_ptr(_frames_archive->allocate(), &cleanup_frame);
                     if(f)
                     {
+                        _frame_arrived = true;
                         _watchdog->kick();
                         memcpy(f->pixels.data(), r->get_buffer().data(), r->get_buffer().size());
                         uvc_process_bulk_payload(std::move(f), r->get_actual_length(), _queue);
                     }
                 }
-                if(running())
-                {
-                    auto sts = _context.messenger->submit_request(r);
-                    if(sts != platform::RS2_USB_STATUS_SUCCESS)
-                        LOG_ERROR("failed to submit UVC request, error: " << sts);
-                }
-            });
 
-            _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
+                auto sts = _context.messenger->submit_request(r);
+                if(sts != platform::RS2_USB_STATUS_SUCCESS)
+                    LOG_ERROR("failed to submit UVC request, error: " << sts);
+            });
 
             _requests = std::vector<rs_usb_request>(_context.request_count);
             for(auto&& r : _requests)
@@ -147,7 +148,9 @@ namespace librealsense
 
             for(auto&& r : _requests)
             {
-                _context.messenger->submit_request(r);
+                auto sts = _context.messenger->submit_request(r);
+                if(sts != platform::RS2_USB_STATUS_SUCCESS)
+                    throw std::runtime_error("failed to submit UVC request while start streaming");
             }
 
             _publish_frame_thread->start();
@@ -155,25 +158,30 @@ namespace librealsense
 
         void uvc_streamer::stop()
         {
-            std::lock_guard<std::mutex> lk(_mutex);
-            if(!_running)
-                return;
-            _running = false;
+            {
+                std::lock_guard<std::mutex> lk(_mutex);
+                if(!_running)
+                    return;
 
-            _request_callback->cancel();
+                _running = false;
+
+                _request_callback->cancel();
+
+                _watchdog->stop();
+
+                for(auto&& r : _requests)
+                {
+                    _context.messenger->cancel_request(r);
+                    r.reset();
+                }
+            }
 
             _queue.clear();
             _frames_archive->stop_allocation();
             _frames_archive->wait_until_empty();
 
-            for(auto&& r : _requests)
-            {
-                _context.messenger->cancel_request(r);
-            }
-
             _context.messenger->reset_endpoint(_read_endpoint, RS2_USB_ENDPOINT_DIRECTION_READ);
 
-            _watchdog->stop();
             _publish_frame_thread->stop();
         }
 
@@ -188,6 +196,19 @@ namespace librealsense
             _request_callback.reset();
 
             _frames_archive.reset();
+        }
+
+        bool uvc_streamer::wait_for_first_frame(uint32_t timeout_ms)
+        {
+            auto start = std::chrono::system_clock::now();
+            while(!_frame_arrived)
+            {
+                auto end = std::chrono::system_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                if(duration > timeout_ms)
+                    break;
+            }
+            return _frame_arrived;
         }
     }
 }

@@ -23,6 +23,7 @@ namespace librealsense
 
             std::shared_ptr<usb_request> get_shared() const;
             void set_shared(const std::shared_ptr<usb_request>& shared);
+            void set_active(bool state);
 
         protected:
             virtual void set_native_buffer_length(int length) override;
@@ -31,6 +32,7 @@ namespace librealsense
             virtual uint8_t* get_native_buffer() const override;
 
         private:
+            bool _active = false;
             std::weak_ptr<usb_request> _shared;
             std::shared_ptr<libusb_transfer> _transfer;
         };

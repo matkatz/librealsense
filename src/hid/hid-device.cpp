@@ -93,10 +93,18 @@ namespace librealsense
 
         void rs_hid_device::stop_capture()
         {
-            _request_callback->cancel();
+            {
+                std::lock_guard<std::mutex> lk(_mutex);
+                if (!_running)
+                    return;
+                _running = false;
 
-            for(auto&& r : _requests)
-                _messenger->cancel_request(r);
+                for (auto&& r : _requests)
+                {
+                    _messenger->cancel_request(r);
+                    r.reset();
+                }
+            }
 
             _handle_interrupts_thread->stop();
             
@@ -105,6 +113,11 @@ namespace librealsense
 
         void rs_hid_device::start_capture(hid_callback callback)
         {
+            std::lock_guard<std::mutex> lk(_mutex);
+            if(_running)
+                return;
+            _running = true;
+
             _callback = callback;
 
             auto in = get_hid_interface()->get_number();
@@ -119,19 +132,20 @@ namespace librealsense
 
             _request_callback = std::make_shared<usb_request_callback>([&](platform::rs_usb_request r)
             {
-                if(r && r->get_actual_length() == sizeof(REALSENSE_HID_REPORT))
+                std::lock_guard<std::mutex> lk(_mutex);
+                if(!_running)
+                    return;
+
+                if(r->get_actual_length() == sizeof(REALSENSE_HID_REPORT))
                 {
                     REALSENSE_HID_REPORT report;
                     memcpy(&report, r->get_buffer().data(), r->get_actual_length());
                     _queue.enqueue(std::move(report));
                 }
 
-                if(r)
-                {
-                    auto sts = _messenger->submit_request(r);
-                    if (sts != platform::RS2_USB_STATUS_SUCCESS)
-                        LOG_ERROR("failed to submit UVC request");
-                }
+                auto sts = _messenger->submit_request(r);
+                if (sts != platform::RS2_USB_STATUS_SUCCESS)
+                    LOG_ERROR("failed to submit UVC request");
             });
 
             _requests = std::vector<rs_usb_request>(USB_REQUEST_COUNT);

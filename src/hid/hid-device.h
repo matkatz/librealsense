@@ -45,6 +45,8 @@ namespace librealsense
             rs_usb_interface get_hid_interface();
             usb_status set_feature_report(unsigned char power, int report_id, int fps = 0);
 
+            bool _running = false;
+            std::mutex _mutex;
             hid_callback _callback;
             rs_usb_device _usb_device;
             rs_usb_messenger _messenger;

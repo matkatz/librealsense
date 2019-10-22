@@ -147,6 +147,7 @@ namespace librealsense
 
             rs_usb_device                           _usb_device = nullptr;
             rs_usb_messenger                        _messenger;
+            mutable std::mutex                      _interrupt_mutex;
             rs_usb_request                          _interrupt_request;
             rs_usb_request_callback                 _interrupt_callback;
             uint8_t                                 _usb_request_count;
