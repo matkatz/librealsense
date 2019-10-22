@@ -22,7 +22,17 @@ namespace librealsense
 
         usb_request_usbhost::~usb_request_usbhost()
         {
-            _native_request->client_data = NULL;
+            if(_active)
+                usb_request_cancel(_native_request.get());
+
+            int attempts = 10;
+            while(_active && attempts--)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        void usb_request_usbhost::set_active(bool state)
+        {
+            _active = state;
         }
 
         int usb_request_usbhost::get_native_buffer_length()

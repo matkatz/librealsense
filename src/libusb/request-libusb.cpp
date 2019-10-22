@@ -41,13 +41,13 @@ namespace librealsense
             if(_active)
                 libusb_cancel_transfer(_transfer.get());
 
-            while(_active)
+            int attempts = 10;
+            while(_active && attempts--)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
         void usb_request_libusb::set_active(bool state)
         {
-            std::lock_guard<std::mutex> lk(_mutex);
             _active = state;
         }
 

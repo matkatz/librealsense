@@ -65,7 +65,6 @@ namespace librealsense
             std::mutex _mutex;
             std::shared_ptr<dispatcher> _dispatcher;
             std::map<uint8_t,std::shared_ptr<dispatcher>> _dispatchers;
-            std::vector<rs_usb_request> _active_requsts;
 
             void invoke();
         };

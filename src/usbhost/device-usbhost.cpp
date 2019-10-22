@@ -151,18 +151,16 @@ namespace librealsense
         usb_status usb_device_usbhost::submit_request(const rs_usb_request& request)
         {
             auto nr = reinterpret_cast<::usb_request*>(request->get_native_request());
+            auto req = std::dynamic_pointer_cast<usb_request_usbhost>(request);
+            req->set_active(true);
             auto sts = usb_request_queue(nr);
             if(sts < 0)
             {
+                req->set_active(false);
                 std::string strerr = strerror(errno);
                 LOG_WARNING("usb_request_queue returned error, endpoint: " << (int)request->get_endpoint()->get_address() << " error: " << strerr << ", number: " << (int)errno);
                 return usbhost_status_to_rs(errno);
             }
-            {
-                std::lock_guard<std::mutex> lk(_mutex);
-                _active_requsts.push_back(request);
-            }
-
             invoke();
             return RS2_USB_STATUS_SUCCESS;
         }
@@ -193,17 +191,11 @@ namespace librealsense
 
                     if(urb)
                     {
+                        urb->set_active(false);
+
                         auto response = urb->get_shared();
                         if(response)
                         {
-                            {
-                                std::lock_guard<std::mutex> lk(_mutex);
-                                auto it = std::find_if(_active_requsts.begin(), _active_requsts.end(),
-                                                       [response] (const rs_usb_request& u) { return u == response; });
-                                if(it != _active_requsts.end())
-                                    _active_requsts.erase(it);
-                            }
-
                             auto cb = response->get_callback();
                             auto d = _dispatchers.at(response->get_endpoint()->get_address());
                             d->invoke([cb, response](dispatcher::cancellable_timer t)

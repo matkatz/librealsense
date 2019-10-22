@@ -33,7 +33,6 @@ namespace librealsense
 
         private:
             bool _active = false;
-            std::mutex _mutex;
             std::weak_ptr<usb_request> _shared;
             std::shared_ptr<libusb_transfer> _transfer;
         };
