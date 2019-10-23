@@ -45,11 +45,7 @@ namespace librealsense
             while(_active && attempts--)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             if (_active)
-            {
-                auto msg = "active request didn't return on time";
-                LOG_ERROR(msg);
-                throw std::runtime_error(msg);
-            }
+                LOG_ERROR("active request didn't return on time");
         }
 
         void usb_request_libusb::set_active(bool state)
