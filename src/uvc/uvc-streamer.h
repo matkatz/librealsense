@@ -28,47 +28,6 @@ namespace librealsense
             uint8_t request_count;
         };
 
-        class watchdog
-        {
-        public:
-            watchdog(std::function<void()> operation, uint64_t timeout_ms) :
-                    _operation(std::move(operation)), _timeout_ms(timeout_ms)
-            {
-                _watcher = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
-                           {
-                                if(cancellable_timer.try_sleep(_timeout_ms))
-                                {
-                                    if(!_kicked)
-                                        _operation();
-
-                                    std::lock_guard<std::mutex> lk(_m);
-                                    _kicked = false;
-                                }
-                           });
-            }
-
-            ~watchdog()
-            {
-                stop();
-            }
-
-            void start() { std::lock_guard<std::mutex> lk(_m); _watcher->start(); _running = true; }
-            void stop() { { std::lock_guard<std::mutex> lk(_m); _running = false; } _watcher->stop(); }
-            bool running() { std::lock_guard<std::mutex> lk(_m); return _running; }
-            void set_timeout(uint64_t timeout_ms) { std::lock_guard<std::mutex> lk(_m); _timeout_ms = timeout_ms; }
-            void kick() { std::lock_guard<std::mutex> lk(_m); _kicked = true; }
-
-
-        private:
-            std::mutex _m;
-            uint64_t _timeout_ms;
-            bool _kicked = false;
-            bool _running = false;
-            bool _blocker = true;
-            std::function<void()> _operation;
-            std::shared_ptr<active_object<>> _watcher;
-        };
-
         class uvc_streamer
         {
         public:
@@ -86,9 +45,10 @@ namespace librealsense
             bool _running = false;
             bool _frame_arrived = false;
 
-            std::mutex _mutex;
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;
+
+            blocking_dispatcher _action_dispatcher;
 
             std::shared_ptr<watchdog> _watchdog;
             uint32_t _read_buff_length;

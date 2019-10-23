@@ -147,13 +147,11 @@ namespace librealsense
 
             rs_usb_device                           _usb_device = nullptr;
             rs_usb_messenger                        _messenger;
-            mutable std::mutex                      _interrupt_mutex;
             rs_usb_request                          _interrupt_request;
             rs_usb_request_callback                 _interrupt_callback;
             uint8_t                                 _usb_request_count;
 
-            mutable std::mutex                      _power_mutex;
-
+            mutable blocking_dispatcher             _action_dispatcher;
             // uvc internal
             std::shared_ptr<uvc_parser>             _parser;
             std::vector<std::shared_ptr<uvc_streamer>> _streamers;

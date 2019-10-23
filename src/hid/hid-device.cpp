@@ -99,12 +99,15 @@ namespace librealsense
                     return;
                 _running = false;
 
+                _request_callback->cancel();
+
                 for (auto&& r : _requests)
                 {
                     _messenger->cancel_request(r);
-                    r.reset();
                 }
             }
+
+            _requests.clear();
 
             _handle_interrupts_thread->stop();
             

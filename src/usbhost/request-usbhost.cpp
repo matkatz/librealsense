@@ -28,6 +28,12 @@ namespace librealsense
             int attempts = 10;
             while(_active && attempts--)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            if(_active)
+            {
+                auto msg = "active request didn't return on time";
+                LOG_ERROR(msg);
+                throw std::runtime_error(msg);
+            }
         }
 
         void usb_request_usbhost::set_active(bool state)

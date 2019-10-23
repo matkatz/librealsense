@@ -56,9 +56,13 @@ namespace librealsense
         }
 
         rs_uvc_device::rs_uvc_device(const rs_usb_device& usb_device, const uvc_device_info &info, uint8_t usb_request_count) :
-                _usb_device(usb_device), _info(info), _usb_request_count(usb_request_count)
+                _usb_device(usb_device),
+                _info(info),
+                _action_dispatcher(10),
+                _usb_request_count(usb_request_count)
         {
             _parser = std::make_shared<uvc_parser>(usb_device, info);
+            _action_dispatcher.start();
         }
 
         rs_uvc_device::~rs_uvc_device()
@@ -69,6 +73,7 @@ namespace librealsense
             catch (...) {
                 LOG_WARNING("rs_uvc_device failed to switch power state on destructor");
             }
+            _action_dispatcher.stop();
         }
 
         void rs_uvc_device::probe_and_commit(stream_profile profile, frame_callback callback, int buffers)
@@ -139,23 +144,30 @@ namespace librealsense
 
         void rs_uvc_device::set_power_state(power_state state)
         {
-            std::lock_guard<std::mutex> lock(_power_mutex);
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if(state != _power_state)
+                {
+                    switch(state)
+                    {
+                        case D0:
+                            _messenger = _usb_device->open(_info.mi);
+                            if (_messenger)
+                                listen_to_interrupts();
+                            _power_state = D0;
+                            break;
+                        case D3:
+                            close_uvc_device();
+                            if(_messenger)
+                                _messenger.reset();
+                            _power_state = D3;
+                            break;
+                    }
+                }
+            }, [this, state](){ return state == _power_state; });
 
-            if (state == D0 && _power_state == D3) {
-                _messenger = _usb_device->open(_info.mi);
-
-                if(!_messenger)
-                    throw std::runtime_error("failed to open UVC device!");
-
-                listen_to_interrupts();
-
-                _power_state = D0;
-
-            }
-            if (state == D3 && _power_state == D0) {
-                close_uvc_device();
-                _power_state = D3;
-            }
+            if(_power_state == D0 && !_messenger)
+                throw std::runtime_error("failed to open UVC device!");
         }
 
         power_state rs_uvc_device::get_power_state() const
@@ -413,17 +425,17 @@ namespace librealsense
             streamer->start();
             _streamers.push_back(streamer);
 
-            if(_streamers.size() == _profiles.size())
-            {
-                for(auto&& s : _streamers)
-                {
-                    if(!s->wait_for_first_frame(FIRST_FRAME_MILLISECONDS_TIMEOUT))
-                    {
-                        LOG_ERROR("Failed to start streaming, no frames received!");
-                        throw std::runtime_error("Failed to start streaming, no frames received!");
-                    }
-                }
-            }
+//            if(_streamers.size() == _profiles.size())
+//            {
+//                for(auto&& s : _streamers)
+//                {
+//                    if(!s->wait_for_first_frame(FIRST_FRAME_MILLISECONDS_TIMEOUT))
+//                    {
+//                        LOG_ERROR("Failed to start streaming, no frames received!");
+//                        throw std::runtime_error("Failed to start streaming, no frames received!");
+//                    }
+//                }
+//            }
         }
 
         void rs_uvc_device::stop_stream_cleanup(const stream_profile &profile,
@@ -529,20 +541,29 @@ namespace librealsense
         void rs_uvc_device::set_data_usb(uvc_req_code action, int control, int unit,
                                               int value) const {
             unsigned char buffer[4];
-
             INT_TO_DW(value, buffer);
-            uint32_t transferred;
-            int status = _messenger->control_transfer(
-                    UVC_REQ_TYPE_SET,
-                    action,
-                    control << 8,
-                    unit << 8 | (_info.mi),
-                    buffer,
-                    sizeof(int32_t),
-                    transferred,
-                    0);
 
-            if (status != RS2_USB_STATUS_SUCCESS) {
+            usb_status sts;
+            uint32_t transferred;
+
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if (_messenger)
+                {
+                    sts = _messenger->control_transfer(
+                          UVC_REQ_TYPE_SET,
+                          action,
+                          control << 8,
+                          unit << 8 | (_info.mi),
+                          buffer,
+                          sizeof(int32_t),
+                          transferred,
+                          0);
+                }
+
+            }, [this](){ return !_messenger; });
+
+            if (sts != RS2_USB_STATUS_SUCCESS) {
                 throw ("set_data_usb failed!");
             }
 
@@ -552,31 +573,41 @@ namespace librealsense
 
         bool rs_uvc_device::uvc_get_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len, uvc_req_code req_code) const
         {
-            if (!_messenger)
-                return RS2_USB_STATUS_NO_DEVICE;
+            usb_status sts;
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if (_messenger)
+                {
+                    uint32_t transferred;
+                    sts = _messenger->control_transfer(
+                            UVC_REQ_TYPE_GET, req_code,
+                            ctrl << 8,
+                            unit << 8 | _info.mi,
+                            static_cast<unsigned char *>(data),
+                            len, transferred, CONTROL_TRANSFER_TIMEOUT);
+                }
+            }, [this](){ return !_messenger; });
 
-            uint32_t transferred;
-            auto sts = _messenger->control_transfer(
-                    UVC_REQ_TYPE_GET, req_code,
-                    ctrl << 8,
-                    unit << 8 | _info.mi,
-                    static_cast<unsigned char *>(data),
-                    len, transferred, CONTROL_TRANSFER_TIMEOUT);
             return sts == RS2_USB_STATUS_SUCCESS;
         }
 
         bool rs_uvc_device::uvc_set_ctrl(uint8_t unit, uint8_t ctrl, void *data, int len)
         {
-            if (!_messenger)
-                return RS2_USB_STATUS_NO_DEVICE;
+            usb_status sts;
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if (_messenger)
+                {
+                    uint32_t transferred;
+                    sts = _messenger->control_transfer(
+                            UVC_REQ_TYPE_SET, UVC_SET_CUR,
+                            ctrl << 8,
+                            unit << 8 | _info.mi,
+                            static_cast<unsigned char *>(data),
+                            len, transferred, CONTROL_TRANSFER_TIMEOUT);
+                }
+            }, [this](){ return !_messenger; });
 
-            uint32_t transferred;
-            auto sts = _messenger->control_transfer(
-                    UVC_REQ_TYPE_SET, UVC_SET_CUR,
-                    ctrl << 8,
-                    unit << 8 | _info.mi,
-                    static_cast<unsigned char *>(data),
-                    len, transferred, CONTROL_TRANSFER_TIMEOUT);
             return sts == RS2_USB_STATUS_SUCCESS;
         }
 
@@ -601,36 +632,31 @@ namespace librealsense
                              LOG_WARNING("interrupt event received: " << buff.c_str());
                          }
 
-                         std::lock_guard<std::mutex> lock(_interrupt_mutex);
-                         if(_interrupt_request)
+                         _action_dispatcher.invoke([this](dispatcher::cancellable_timer c)
+                         {
+                             if (!_messenger)
+                                 return;
                              _messenger->submit_request(_interrupt_request);
+                         });
                      });
 
-            {
-                std::lock_guard<std::mutex> lock(_interrupt_mutex);
-                _interrupt_request = _messenger->create_request(iep);
-                _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
-                _interrupt_request->set_callback(_interrupt_callback);
-            }
+            _interrupt_request = _messenger->create_request(iep);
+            _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
+            _interrupt_request->set_callback(_interrupt_callback);
             _messenger->submit_request(_interrupt_request);
         }
 
         void rs_uvc_device::close_uvc_device()
         {
-            {
-                std::lock_guard<std::mutex> lock(_interrupt_mutex);
+            if(_interrupt_callback)
+                _interrupt_callback->cancel();
 
-                if(_interrupt_request)
-                {
-                    _messenger->cancel_request(_interrupt_request);
-                    _interrupt_request.reset();
-                }
-            }
+            if(_interrupt_request)
+                _messenger->cancel_request(_interrupt_request);
+
+            _interrupt_request.reset();
 
             _streamers.clear();
-
-            if(_messenger)
-                _messenger.reset();
         }
 
         // Probe (Set and Get) streaming control block
@@ -774,19 +800,24 @@ namespace librealsense
                     QUAD_TO_QW(ctrl->bmLayoutPerStream, buf + 40);
                 }
             }
-            int retries = 0;
+
             usb_status sts;
-            do {
-                //auto str_if = uvc_get_stream_if(devh, ctrl->bInterfaceNumber);
-                /* do the transfer */
-                uint32_t transferred;
-                sts = _messenger->control_transfer(
-                        req == UVC_SET_CUR ? UVC_REQ_TYPE_SET : UVC_REQ_TYPE_GET,
-                        req,
-                        probe ? (UVC_VS_PROBE_CONTROL << 8) : (UVC_VS_COMMIT_CONTROL << 8),
-                        ctrl->bInterfaceNumber, // When requestType is directed to an interface, the driver automatically passes the interface number in the low byte of index
-                        buf, len, transferred, 0);
-            } while (sts != RS2_USB_STATUS_SUCCESS && retries++ < 5);
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if (_messenger)
+                {
+                    int retries = 0;
+                    do {
+                        uint32_t transferred;
+                        sts = _messenger->control_transfer(
+                                req == UVC_SET_CUR ? UVC_REQ_TYPE_SET : UVC_REQ_TYPE_GET,
+                                req,
+                                probe ? (UVC_VS_PROBE_CONTROL << 8) : (UVC_VS_COMMIT_CONTROL << 8),
+                                ctrl->bInterfaceNumber, // When requestType is directed to an interface, the driver automatically passes the interface number in the low byte of index
+                                buf, len, transferred, 0);
+                    } while (sts != RS2_USB_STATUS_SUCCESS && retries++ < 5);
+                }
+            }, [this](){ return !_messenger; });
 
             if (sts != RS2_USB_STATUS_SUCCESS) {
                 auto e = strerror(errno);
