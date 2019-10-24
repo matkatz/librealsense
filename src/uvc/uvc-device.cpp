@@ -566,7 +566,7 @@ namespace librealsense
             }, [this](){ return !_messenger; });
 
             if (sts != RS2_USB_STATUS_SUCCESS) {
-                throw ("set_data_usb failed!");
+                throw std::runtime_error("set_data_usb failed!");
             }
 
             if (transferred != sizeof(int32_t))
