@@ -112,6 +112,8 @@ namespace librealsense
         const std::shared_ptr<usb_messenger> usb_device_libusb::open(uint8_t interface_number)
         {
             auto h = get_handle(interface_number);
+            if(!h)
+                return nullptr;
             return std::make_shared<usb_messenger_libusb>(shared_from_this(), h);
         }
     }

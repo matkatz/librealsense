@@ -74,17 +74,25 @@ namespace librealsense
                 auto& h = _handles[interface];
                 auto sts = libusb_open(device, &h);
                 if(sts != LIBUSB_SUCCESS)
-                    return libusb_status_to_rs(sts);
+                {
+                    auto rs_sts =  libusb_status_to_rs(sts);
+                    LOG_ERROR("libusb open failed, error: " << usb_status_to_string.at(rs_sts));
+                    return rs_sts;
+                }
 
-                // libusb_set_auto_detach_kernel_driver(h, true);
+                //libusb_set_auto_detach_kernel_driver(h, true);
 
-                if (libusb_kernel_driver_active(h, interface) == 1)//find out if kernel driver is attached
-                    if (libusb_detach_kernel_driver(h, interface) == 0)// detach driver from device if attached.
-                        LOG_DEBUG("handle_libusb - detach kernel driver");
+                 if (libusb_kernel_driver_active(h, interface) == 1)//find out if kernel driver is attached
+                     if (libusb_detach_kernel_driver(h, interface) == 0)// detach driver from device if attached.
+                         LOG_DEBUG("handle_libusb - detach kernel driver");
 
                 sts = libusb_claim_interface(h, interface);
                 if(sts != LIBUSB_SUCCESS)
-                    return libusb_status_to_rs(sts);
+                {
+                    auto rs_sts =  libusb_status_to_rs(sts);
+                    LOG_ERROR("libusb claim interface failed, error: " << usb_status_to_string.at(rs_sts));
+                    return rs_sts;
+                }
 
                 return RS2_USB_STATUS_SUCCESS;
             }

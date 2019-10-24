@@ -46,7 +46,7 @@ namespace librealsense
             int length = 0;
             auto h = _handle->get_handle(endpoint->get_interface_number());
             if(h == nullptr)
-                return RS2_USB_STATUS_NO_DEVICE;
+                return RS2_USB_STATUS_INVALID_PARAM;
             auto sts = libusb_control_transfer(h, request_type, request, value, ep, buffer, length, timeout_ms);
             if(sts < 0)
             {
@@ -62,7 +62,7 @@ namespace librealsense
         {
             auto h = _handle->get_handle(index & 0xFF);
             if(h == nullptr)
-                return RS2_USB_STATUS_NO_DEVICE;
+                return RS2_USB_STATUS_INVALID_PARAM;
             auto sts = libusb_control_transfer(h, request_type, request, value, index, buffer, length, timeout_ms);
             if(sts < 0)
             {
@@ -78,7 +78,7 @@ namespace librealsense
         {
             auto h = _handle->get_handle(endpoint->get_interface_number());
             if(h == nullptr)
-                return RS2_USB_STATUS_NO_DEVICE;
+                return RS2_USB_STATUS_INVALID_PARAM;
             int actual_length = 0;
             auto sts = libusb_bulk_transfer(h, endpoint->get_address(), buffer, length, &actual_length, timeout_ms);
             if(sts < 0)
@@ -102,7 +102,7 @@ namespace librealsense
         {
             auto nr = reinterpret_cast<libusb_transfer*>(request->get_native_request());
             if(nr->dev_handle == NULL)
-                return RS2_USB_STATUS_NO_DEVICE;
+                return RS2_USB_STATUS_INVALID_PARAM;
             auto req = std::dynamic_pointer_cast<usb_request_libusb>(request);
             req->set_active(true);
             auto sts = libusb_submit_transfer(nr);
