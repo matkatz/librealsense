@@ -16,13 +16,14 @@ int main(int argc, char * argv[]) try
 
     rs2::pipeline pipe;
 
+    int frames = 10; //30 * 5;
     int iteration = 0;
     while (true)
     {
         printf("iteration: %d\n", ++iteration);
 
         pipe.start();
-        for (int i = 0; i < 30 * 5; i++)
+        for (int i = 0; i < frames; i++)
         {
             rs2::frameset data = pipe.wait_for_frames();
             printf("frame: %d, size: %d\n", data.get_frame_number(), data.size());
