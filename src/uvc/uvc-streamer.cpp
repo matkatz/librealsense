@@ -92,7 +92,7 @@ namespace librealsense
                 backend_frame_ptr fp(nullptr, [](backend_frame *) {});
                 if (_queue.dequeue(&fp, DEQUEUE_MILLISECONDS_TIMEOUT))
                 {
-                    if(running())
+                    if(_publish_frames && running())
                         _context.user_cb(_context.profile, fp->fo, []() mutable {});
                 }
             });
@@ -123,7 +123,8 @@ namespace librealsense
                         _watchdog->start();
                     _watchdog->set_timeout(_watchdog_timeout);
 
-                    if(r->get_actual_length() >= _context.control->dwMaxVideoFrameSize)
+                    auto al = r->get_actual_length();
+                    if(al > 0 && al == r->get_buffer().data()[0] + _context.control->dwMaxVideoFrameSize)
                     {
                         auto f = backend_frame_ptr(_frames_archive->allocate(), &cleanup_frame);
                         if(f)
@@ -181,6 +182,8 @@ namespace librealsense
 
                 _watchdog->stop();
 
+                _frames_archive->stop_allocation();
+
                 _queue.clear();
 
                 for(auto&& r : _requests)
@@ -188,7 +191,6 @@ namespace librealsense
 
                 _requests.clear();
 
-                _frames_archive->stop_allocation();
                 _frames_archive->wait_until_empty();
 
                 _context.messenger->reset_endpoint(_read_endpoint, RS2_USB_ENDPOINT_DIRECTION_READ);

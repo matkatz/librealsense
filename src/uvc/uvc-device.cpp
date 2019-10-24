@@ -114,12 +114,14 @@ namespace librealsense
 
         void rs_uvc_device::start_callbacks()
         {
-
+            for(auto&& s : _streamers)
+                s->enable_user_callbacks();
         }
 
         void rs_uvc_device::stop_callbacks()
         {
-
+            for(auto&& s : _streamers)
+                s->disable_user_callbacks();
         }
 
         void rs_uvc_device::close(stream_profile profile)

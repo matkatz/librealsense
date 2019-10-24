@@ -39,11 +39,14 @@ namespace librealsense
             bool running() { return _running; }
             void start();
             void stop();
+            void enable_user_callbacks() { _publish_frames = true; }
+            void disable_user_callbacks() { _publish_frames = false; }
             bool wait_for_first_frame(uint32_t timeout_ms);
 
         private:
             bool _running = false;
             bool _frame_arrived = false;
+            bool _publish_frames = true;
 
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;

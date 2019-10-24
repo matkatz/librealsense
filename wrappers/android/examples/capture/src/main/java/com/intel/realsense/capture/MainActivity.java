@@ -1,189 +1,161 @@
 package com.intel.realsense.capture;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
 
-import com.intel.realsense.librealsense.Colorizer;
 import com.intel.realsense.librealsense.Config;
-import com.intel.realsense.librealsense.DeviceList;
+import com.intel.realsense.librealsense.DepthFrame;
 import com.intel.realsense.librealsense.DeviceListener;
+import com.intel.realsense.librealsense.Frame;
+import com.intel.realsense.librealsense.FrameCallback;
 import com.intel.realsense.librealsense.FrameSet;
-import com.intel.realsense.librealsense.GLRsSurfaceView;
 import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.RsContext;
+import com.intel.realsense.librealsense.StreamFormat;
 import com.intel.realsense.librealsense.StreamType;
 
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "librs capture example";
-    private static final int PERMISSIONS_REQUEST_CAMERA = 0;
+    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 0;
+    private static final String TAG = "librs";
 
-    private boolean mPermissionsGrunted = false;
-
-    private Context mAppContext;
-    private TextView mBackGroundText;
-    private GLRsSurfaceView mGLSurfaceView;
-    private boolean mIsStreaming = false;
-    private final Handler mHandler = new Handler();
-
-    private Pipeline mPipeline;
-    private Colorizer mColorizer;
     private RsContext mRsContext;
+    private int mIteration = 0;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if(!mStreamingThread.isAlive())
+            mStreamingThread.start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mStreamingThread.interrupt();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mAppContext = getApplicationContext();
-        mBackGroundText = findViewById(R.id.connectCameraText);
-        mGLSurfaceView = findViewById(R.id.glSurfaceView);
-        mGLSurfaceView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LOW_PROFILE
-            | View.SYSTEM_UI_FLAG_FULLSCREEN
-            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+        //RsContext.init must be called once in the application's lifetime before any interaction with physical RealSense devices.
+        //For multi activities applications use the application context instead of the activity context
+        RsContext.init(getApplicationContext());
+
+        //Register to notifications regarding RealSense devices attach/detach events via the DeviceListener.
+        mRsContext = new RsContext();
+        mRsContext.setDevicesChangedCallback(new DeviceListener() {
+            @Override
+            public void onDeviceAttach() {
+                mStreamingThread.start();
+            }
+
+            @Override
+            public void onDeviceDetach() {
+                mStreamingThread.interrupt();
+            }
+        });
 
         // Android 9 also requires camera permissions
         if (android.os.Build.VERSION.SDK_INT > android.os.Build.VERSION_CODES.O &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISSIONS_REQUEST_CAMERA);
-            return;
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
         }
-
-        mPermissionsGrunted = true;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISSIONS_REQUEST_CAMERA);
-            return;
-        }
-        mPermissionsGrunted = true;
-    }
+    private Thread mStreamingThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try(Config cfg = new Config()) {
+//                    cfg.enableStream(StreamType.DEPTH, 640, 480);
+                cfg.enableStream(StreamType.COLOR, 0,1280, 720, StreamFormat.YUYV, 30);
+//                    cfg.enableStream(StreamType.INFRARED, 640, 480);
+//                    cfg.enableStream(StreamType.GYRO);
+//                    cfg.enableStream(StreamType.ACCEL);
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if(mPermissionsGrunted)
-            init();
-        else
-            Log.e(TAG, "missing permissions");
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if(mRsContext != null)
-            mRsContext.close();
-        stop();
-        mPipeline.close();
-    }
-
-    private void init(){
-        //RsContext.init must be called once in the application lifetime before any interaction with physical RealSense devices.
-        //For multi activities applications use the application context instead of the activity context
-        RsContext.init(mAppContext);
-
-        //Register to notifications regarding RealSense devices attach/detach events via the DeviceListener.
-        mRsContext = new RsContext();
-        mRsContext.setDevicesChangedCallback(mListener);
-
-        mPipeline = new Pipeline();
-        mColorizer = new Colorizer();
-
-        try(DeviceList dl = mRsContext.queryDevices()){
-            if(dl.getDeviceCount() > 0) {
-                showConnectLabel(false);
-                start();
+                try (Pipeline pipe = new Pipeline()) {
+                    while(!mStreamingThread.isInterrupted()) {
+                        try {
+                            stream(pipe, cfg);
+//                            Thread.sleep(500);
+                        } catch (Exception e) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    TextView textView = findViewById(R.id.connectCameraText);
+                                    textView.setText(textView.getText() + "\nwait for frames failed");
+                                }
+                            });
+                            e.printStackTrace();
+                            break;
+                        }
+                    }
+                }
             }
         }
-    }
+    });
 
-    private void showConnectLabel(final boolean state){
+    //Start streaming and print the distance of the center pixel in the depth frame.
+    private void stream(Pipeline pipe, Config cfg) throws Exception {
+        Log.i(TAG, "start iteratoin: " + ++mIteration );
+//        pipe.start(cfg);
+        pipe.start();
+
+        Log.i(TAG, "iteratoin: " + mIteration +" started" );
+
+
+        for(int i = 0; i < 10; i++) {
+            try (FrameSet frames = pipe.waitForFrames()) {
+                final List<String> msgs =new ArrayList<>();
+
+                frames.foreach(new FrameCallback() {
+                    @Override
+                    public void onFrame(Frame frame) {
+                        msgs.add(frame.getProfile().getType() + ", number: " + frame.getNumber() + "\n");
+                    }
+                });
+//                Log.i(TAG, "frame received");
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        TextView textView = findViewById(R.id.connectCameraText);
+                        String msg = "iteratoin: " + mIteration + "\n";
+                        for (String s : msgs)
+                            msg += s;
+                        textView.setText(msg);
+                    }
+                });
+            }
+        }
+        Log.i(TAG, "stopping iteratoin: " + mIteration );
+
+        pipe.stop();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mBackGroundText.setVisibility(state ? View.VISIBLE : View.GONE);
+                TextView textView = findViewById(R.id.connectCameraText);
+                textView.setText("stopped: " + mIteration);
             }
         });
-    }
-
-    private DeviceListener mListener = new DeviceListener() {
-        @Override
-        public void onDeviceAttach() {
-            showConnectLabel(false);
-        }
-
-        @Override
-        public void onDeviceDetach() {
-            showConnectLabel(true);
-            stop();
-        }
-    };
-
-    Runnable mStreaming = new Runnable() {
-        @Override
-        public void run() {
-            try {
-                try(FrameSet frames = mPipeline.waitForFrames(1000)) {
-                    try(FrameSet processed = frames.applyFilter(mColorizer)) {
-                        mGLSurfaceView.upload(processed);
-                    }
-                }
-                mHandler.post(mStreaming);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "streaming, error: " + e.getMessage());
-            }
-        }
-    };
-
-    private void configAndStart() throws Exception {
-        try(Config config  = new Config())
-        {
-            config.enableStream(StreamType.DEPTH, 640, 480);
-            config.enableStream(StreamType.COLOR, 640, 480);
-            mPipeline.start(config);
-        }
-    }
-
-    private synchronized void start() {
-        if(mIsStreaming)
-            return;
-        try{
-            Log.d(TAG, "try start streaming");
-            mGLSurfaceView.clear();
-            configAndStart();
-            mIsStreaming = true;
-            mHandler.post(mStreaming);
-            Log.d(TAG, "streaming started successfully");
-        } catch (Exception e) {
-            Log.d(TAG, "failed to start streaming");
-        }
-    }
-
-    private synchronized void stop() {
-        if(!mIsStreaming)
-            return;
-        try {
-            Log.d(TAG, "try stop streaming");
-            mIsStreaming = false;
-            mHandler.removeCallbacks(mStreaming);
-            mPipeline.stop();
-            Log.d(TAG, "streaming stopped successfully");
-        } catch (Exception e) {
-            Log.d(TAG, "failed to stop streaming");
-        }
+        Log.i(TAG, "iteratoin: " + mIteration + " stopped");
     }
 }
