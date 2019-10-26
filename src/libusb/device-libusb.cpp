@@ -71,8 +71,7 @@ namespace librealsense
 
         usb_device_libusb::~usb_device_libusb()
         {
-            if(_device)
-                libusb_unref_device(_device);
+            libusb_unref_device(_device);
         }
 
         const rs_usb_interface usb_device_libusb::get_interface(uint8_t interface_number) const
@@ -86,11 +85,18 @@ namespace librealsense
 
         std::shared_ptr<handle_libusb> usb_device_libusb::get_handle(uint8_t interface_number)
         {
-            auto i = get_interface(interface_number);
-            if (!i)
+            try
+            {
+                auto i = get_interface(interface_number);
+                if (!i)
+                    return nullptr;
+                auto intf = std::dynamic_pointer_cast<usb_interface_libusb>(i);
+                return std::make_shared<handle_libusb>(_context, _device, intf);
+            }
+            catch(const std::exception& e)
+            {
                 return nullptr;
-            auto intf = std::dynamic_pointer_cast<usb_interface_libusb>(i);
-            return std::make_shared<handle_libusb>(_context, _device, intf);
+            }
         }
 
         const std::shared_ptr<usb_messenger> usb_device_libusb::open(uint8_t interface_number)
