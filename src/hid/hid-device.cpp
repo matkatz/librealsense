@@ -100,8 +100,6 @@ namespace librealsense
                 if(!_running)
                     return;
 
-                _request_callback->cancel();
-
                 _queue.clear();
 
                 for (auto&& r : _requests)

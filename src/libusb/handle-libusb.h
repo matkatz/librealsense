@@ -4,6 +4,7 @@
 #pragma once
 
 #include "types.h"
+#include "context-libusb.h"
 
 #include <chrono>
 
@@ -38,16 +39,18 @@ namespace librealsense
         class handle_libusb
         {
         public:
-            handle_libusb(libusb_device* device, std::shared_ptr<usb_interface_libusb> interface) :
-                    _first_interface(interface)
+            handle_libusb(std::shared_ptr<usb_context> context, libusb_device* device, std::shared_ptr<usb_interface_libusb> interface) :
+                    _first_interface(interface), _context(context)
             {
                 claim_interface(device, interface->get_number());
                 for(auto&& i : interface->get_associated_interfaces())
                     claim_interface(device, i->get_number());
+                _context->start_event_handler();
             }
 
             ~handle_libusb()
             {
+                _context->stop_event_handler();
                 for(auto&& h : _handles)
                 {
                     if(h.second == NULL)
@@ -97,6 +100,7 @@ namespace librealsense
                 return RS2_USB_STATUS_SUCCESS;
             }
 
+            std::shared_ptr<usb_context> _context;
             std::shared_ptr<usb_interface_libusb> _first_interface;
             std::map<int,libusb_device_handle*> _handles;
         };

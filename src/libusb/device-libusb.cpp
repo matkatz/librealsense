@@ -18,8 +18,6 @@ namespace librealsense
         usb_device_libusb::usb_device_libusb(libusb_device* device, const libusb_device_descriptor& desc, const usb_device_info& info, std::shared_ptr<usb_context> context) :
                 _device(device), _usb_device_descriptor(desc), _info(info), _context(context)
         {
-            libusb_ref_device(_device);
-            libusb_open(_device, &_handle);
             usb_descriptor ud = {desc.bLength, desc.bDescriptorType, std::vector<uint8_t>(desc.bLength)};
             memcpy(ud.data.data(), &desc, desc.bLength);
             _descriptors.push_back(ud);
@@ -64,31 +62,17 @@ namespace librealsense
                             k += l;
                         }
                     }
-
                 }
 
                 libusb_free_config_descriptor(config);
+                libusb_ref_device(_device);
             }
-
-            _event_handler = std::make_shared<active_object<>>([&](dispatcher::cancellable_timer cancellable_timer)
-                                                               {
-                                                                   auto sts = libusb_handle_events_completed(_context->get(), &_kill_handler_thread);
-                                                               });
-            _event_handler->start();
         }
 
         usb_device_libusb::~usb_device_libusb()
         {
-            _kill_handler_thread = 1;
-            libusb_close(_handle);
-            _event_handler->stop();
             if(_device)
                 libusb_unref_device(_device);
-        }
-
-        void usb_device_libusb::release()
-        {
-            LOG_DEBUG("usb device: " << get_info().unique_id << ", released");
         }
 
         const rs_usb_interface usb_device_libusb::get_interface(uint8_t interface_number) const
@@ -106,7 +90,7 @@ namespace librealsense
             if (!i)
                 return nullptr;
             auto intf = std::dynamic_pointer_cast<usb_interface_libusb>(i);
-            return std::make_shared<handle_libusb>(_device, intf);
+            return std::make_shared<handle_libusb>(_context, _device, intf);
         }
 
         const std::shared_ptr<usb_messenger> usb_device_libusb::open(uint8_t interface_number)

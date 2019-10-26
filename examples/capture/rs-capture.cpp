@@ -10,7 +10,7 @@
 int main(int argc, char * argv[]) try
 {
     rs2::log_to_console(RS2_LOG_SEVERITY_WARN);
-    window app(1280, 720, "RealSense Capture Example");
+    //window app(1280, 720, "RealSense Capture Example");
     rs2::colorizer color_map;
 
 
@@ -27,11 +27,11 @@ int main(int argc, char * argv[]) try
         {
             rs2::frameset data = pipe.wait_for_frames();
             printf("frame: %d, size: %d\n", data.get_frame_number(), data.size());
-            if (app)
-            {
-                auto v = data.apply_filter(color_map);
-                app.show(v);
-            }
+            //if (app)
+            //{
+            //    auto v = data.apply_filter(color_map);
+            //    app.show(v);
+            //}
         }
 
         pipe.stop();

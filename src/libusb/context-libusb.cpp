@@ -4,24 +4,33 @@
 #pragma once
 
 #include "context-libusb.h"
+#include "../types.h"
 
 namespace librealsense
 {
     namespace platform
-    {
-        std::shared_ptr<usb_context> instance()
+    {       
+        usb_context::usb_context() : _ctx(NULL), _list(NULL), _count(0)
         {
-            static std::shared_ptr<usb_context> instance = std::make_shared<usb_context>();
-            return instance;
-        }
-        
-        usb_context::usb_context()
-        {
-            libusb_init(&_ctx);
+            auto sts = libusb_init(NULL);
+            if(sts != LIBUSB_SUCCESS)
+            {
+                LOG_ERROR("libusb_init failed");
+            }
+            _count = libusb_get_device_list(_ctx, &_list);
+            _event_handler = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
+            {
+                if(_kill_handler_thread)
+                    return;
+                auto sts = libusb_handle_events_completed(_ctx, &_kill_handler_thread);
+            });
         }
         
         usb_context::~usb_context()
         {
+            libusb_free_device_list(_list, true);
+            if(_handling_events)
+                _event_handler->stop();
             libusb_exit(_ctx);
         }
         
@@ -30,30 +39,36 @@ namespace librealsense
             return _ctx;
         } 
     
-        usb_device_list::usb_device_list() : _list(NULL), _count(0)
+        void usb_context::start_event_handler()
         {
-            _ctx = std::make_shared<usb_context>();
-            _count = libusb_get_device_list(_ctx->get(), &_list);
+            std::lock_guard<std::mutex> lk(_mutex);
+            if(!_handling_events)
+            {
+                _handling_events = true;
+                _event_handler->start();
+            }
+            _kill_handler_thread = 0;
+            _handler_requests++;
         }
-        
-        usb_device_list::~usb_device_list()
+
+        void usb_context::stop_event_handler()
         {
-            libusb_free_device_list(_list, true);
+            std::lock_guard<std::mutex> lk(_mutex);
+            if(_handler_requests == 1)
+            {
+                _kill_handler_thread = 1;
+            }
+            _handler_requests--;
         }
-        
-        libusb_device* usb_device_list::get(uint8_t index)
+
+        libusb_device* usb_context::get_device(uint8_t index)
         {
             return index < _count ? _list[index] : NULL;
         }
         
-        size_t usb_device_list::count()
+        size_t usb_context::device_count()
         {
             return _count;
-        }
-
-        std::shared_ptr<usb_context> usb_device_list::get_context()
-        {
-            return _ctx;
         }
     }
 }

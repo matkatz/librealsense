@@ -86,9 +86,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try(Config cfg = new Config()) {
-//                    cfg.enableStream(StreamType.DEPTH, 640, 480);
+                cfg.enableStream(StreamType.DEPTH, 0, 640, 480, StreamFormat.Z16, 30);
                 cfg.enableStream(StreamType.COLOR, 0,1280, 720, StreamFormat.YUYV, 30);
-//                    cfg.enableStream(StreamType.INFRARED, 640, 480);
+                cfg.enableStream(StreamType.INFRARED, 1,640, 480, StreamFormat.Y8, 30);
 //                    cfg.enableStream(StreamType.GYRO);
 //                    cfg.enableStream(StreamType.ACCEL);
 

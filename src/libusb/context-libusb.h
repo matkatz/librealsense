@@ -4,6 +4,7 @@
 #pragma once
 
 #include "usb/usb-types.h"
+#include "../concurrency.h"
 
 #include <memory>
 #include <libusb.h>
@@ -15,31 +16,26 @@ namespace librealsense
         class usb_context
         {
         public:
-            usb_context();
-            
+            usb_context();            
             ~usb_context();
             
-            libusb_context* get();            
-            
-        private:
-            struct libusb_context* _ctx;
-        };
-        
-        class usb_device_list
-        {
-        public:
-            usb_device_list();
-            
-            ~usb_device_list();
-            
-            libusb_device* get(uint8_t index);
-            size_t count();
+            libusb_context* get();
 
-            std::shared_ptr<usb_context> get_context();
+            void start_event_handler();
+            void stop_event_handler();
+
+            size_t device_count();
+            libusb_device* get_device(uint8_t index);
+
         private:
+            std::mutex _mutex;
             libusb_device **_list;
             size_t _count;
-            std::shared_ptr<usb_context> _ctx;
+            int _handler_requests = 0;
+            struct libusb_context* _ctx;
+            int _kill_handler_thread = 0;
+            bool _handling_events = false;
+            std::shared_ptr<active_object<>> _event_handler;
         };
     }
 }

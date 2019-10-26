@@ -158,6 +158,8 @@ namespace librealsense
                 if(_running)
                     return;
 
+                _running = true;
+
                 for(auto&& r : _requests)
                 {
                     auto sts = _context.messenger->submit_request(r);
@@ -167,7 +169,6 @@ namespace librealsense
 
                 _publish_frame_thread->start();
 
-                _running = true;
             }, [this](){ return _running; });
         }
 
@@ -177,8 +178,6 @@ namespace librealsense
             {
                 if(!_running)
                     return;
-
-                _request_callback->cancel();
 
                 _watchdog->stop();
 

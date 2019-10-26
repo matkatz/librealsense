@@ -21,15 +21,18 @@ namespace librealsense
                     auto cb = response->get_callback();
                     cb->callback(response);
                 }
-            }
+            }            
         }
 
         usb_request_libusb::usb_request_libusb(libusb_device_handle *dev_handle, rs_usb_endpoint endpoint)
         {
             _endpoint = endpoint;
-            _transfer = std::shared_ptr<libusb_transfer>(libusb_alloc_transfer(0), [](libusb_transfer* req)
+            _transfer = std::shared_ptr<libusb_transfer>(libusb_alloc_transfer(0), [this](libusb_transfer* req)
             {
-                libusb_free_transfer(req);
+                if(!_active) 
+                    libusb_free_transfer(req);
+                else
+                    LOG_ERROR("active request didn't return on time");
             } );
             libusb_fill_bulk_transfer(_transfer.get(), dev_handle, _endpoint->get_address(), NULL, 0, internal_callback, NULL, 0);
 
@@ -44,8 +47,6 @@ namespace librealsense
             int attempts = 10;
             while(_active && attempts--)
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            if (_active)
-                LOG_ERROR("active request didn't return on time");
         }
 
         void usb_request_libusb::set_active(bool state)

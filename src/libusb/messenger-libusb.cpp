@@ -37,24 +37,18 @@ namespace librealsense
 
         usb_status usb_messenger_libusb::reset_endpoint(const rs_usb_endpoint& endpoint, uint32_t timeout_ms)
         {
-            uint32_t transferred = 0;
-            int request_type = UVC_FEATURE;
-            int request = CLEAR_FEATURE;
-            int value = 0;
             int ep = endpoint->get_address();
-            uint8_t* buffer = NULL;
-            int length = 0;
             auto h = _handle->get_handle(endpoint->get_interface_number());
             if(h == nullptr)
                 return RS2_USB_STATUS_INVALID_PARAM;
-            auto sts = libusb_control_transfer(h, request_type, request, value, ep, buffer, length, timeout_ms);
+                
+            auto sts = libusb_clear_halt(h, ep);
             if(sts < 0)
             {
                 std::string strerr = strerror(errno);
                 LOG_WARNING("reset_endpoint-control_transfer returned error, index: " << ep << ", error: " << strerr << ", number: " << (int)errno);
                 return libusb_status_to_rs(sts);
             }
-            transferred = sts;
             return RS2_USB_STATUS_SUCCESS;
         }
 

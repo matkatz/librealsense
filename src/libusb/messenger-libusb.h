@@ -39,7 +39,6 @@ namespace librealsense
 
         private:
             const std::shared_ptr<usb_device_libusb> _device;
-
             std::mutex _mutex;
             std::shared_ptr<handle_libusb> _handle;
         };

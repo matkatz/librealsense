@@ -31,18 +31,14 @@ namespace librealsense
             virtual const rs_usb_messenger open(uint8_t interface_number) override;
             virtual const std::vector<usb_descriptor> get_descriptors() const override { return _descriptors; }
             libusb_device* get_device() { return _device; }
-            void release();
 
         private:
             libusb_device* _device;
-            libusb_device_handle* _handle;
             libusb_device_descriptor _usb_device_descriptor;
             const usb_device_info _info;
             std::vector<std::shared_ptr<usb_interface>> _interfaces;
             std::vector<usb_descriptor> _descriptors;
-            int _kill_handler_thread = 0;
             std::shared_ptr<usb_context> _context;
-            std::shared_ptr<active_object<>> _event_handler;
 
             std::shared_ptr<handle_libusb> get_handle(uint8_t interface_number);
         };

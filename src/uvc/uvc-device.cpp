@@ -155,21 +155,25 @@ namespace librealsense
                         case D0:
                             _messenger = _usb_device->open(_info.mi);
                             if (_messenger)
+                            {
                                 listen_to_interrupts();
-                            _power_state = D0;
+                                _power_state = D0;
+                            }
                             break;
                         case D3:
-                            close_uvc_device();
                             if(_messenger)
+                            {
+                                close_uvc_device();                            
                                 _messenger.reset();
+                            }
                             _power_state = D3;
                             break;
                     }
                 }
             }, [this, state](){ return state == _power_state; });
 
-            if(_power_state == D0 && !_messenger)
-                throw std::runtime_error("failed to open UVC device!");
+            if(state != _power_state)
+                throw std::runtime_error("failed to set power state");
         }
 
         power_state rs_uvc_device::get_power_state() const
@@ -424,20 +428,13 @@ namespace librealsense
             uvc_streamer_context usc = { profile, callback, ctrl, _usb_device, _messenger, _usb_request_count };
 
             auto streamer = std::make_shared<uvc_streamer>(usc);
-            streamer->start();
             _streamers.push_back(streamer);
 
-//            if(_streamers.size() == _profiles.size())
-//            {
-//                for(auto&& s : _streamers)
-//                {
-//                    if(!s->wait_for_first_frame(FIRST_FRAME_MILLISECONDS_TIMEOUT))
-//                    {
-//                        LOG_ERROR("Failed to start streaming, no frames received!");
-//                        throw std::runtime_error("Failed to start streaming, no frames received!");
-//                    }
-//                }
-//            }
+           if(_streamers.size() == _profiles.size())
+           {
+               for(auto&& s : _streamers)
+                    s->start();
+           }
         }
 
         void rs_uvc_device::stop_stream_cleanup(const stream_profile &profile,
@@ -462,24 +459,31 @@ namespace librealsense
                                                  unsigned int length) const {
             unsigned char buffer[4] = {0};
             int32_t ret = 0;
+            
+            usb_status sts;
             uint32_t transferred;
-            auto status = _messenger->control_transfer(
-                    UVC_REQ_TYPE_GET,
-                    action,
-                    control << 8,
-                    unit << 8 | (_info.mi),
-                    buffer,
-                    sizeof(int32_t),
-                    transferred,
-                    0);
+            _action_dispatcher.invoke_and_wait([&, this](dispatcher::cancellable_timer c)
+            {
+                if (_messenger)
+                {
+                    sts = _messenger->control_transfer(
+                            UVC_REQ_TYPE_GET,
+                            action,
+                            control << 8,
+                            unit << 8 | (_info.mi),
+                            buffer,
+                            sizeof(int32_t),
+                            transferred,
+                            0);
+                }
 
-            if (status != RS2_USB_STATUS_SUCCESS) {
-                throw ("get_data_usb failed!");
-            }
+            }, [this](){ return !_messenger; });
 
-            if (transferred != sizeof(int32_t)) {
-                throw ("insufficient data read from USB");
-            }
+            if (sts != RS2_USB_STATUS_SUCCESS)
+                throw std::runtime_error("get_data_usb failed, error: " + usb_status_to_string.at(sts));
+
+            if (transferred != sizeof(int32_t)) 
+                throw std::runtime_error("insufficient data read from USB");
 
             // Converting byte array buffer (with length 8/16/32) to int32
             switch (length) {
@@ -565,9 +569,8 @@ namespace librealsense
 
             }, [this](){ return !_messenger; });
 
-            if (sts != RS2_USB_STATUS_SUCCESS) {
-                throw std::runtime_error("set_data_usb failed!");
-            }
+            if (sts != RS2_USB_STATUS_SUCCESS)
+                throw std::runtime_error("set_data_usb failed, error: " + usb_status_to_string.at(sts));
 
             if (transferred != sizeof(int32_t))
                 throw std::runtime_error("insufficient data writen to USB");
@@ -590,6 +593,9 @@ namespace librealsense
                 }
             }, [this](){ return !_messenger; });
 
+            if (sts == RS2_USB_STATUS_NO_DEVICE)
+                throw std::runtime_error("usb device disconnected");
+
             return sts == RS2_USB_STATUS_SUCCESS;
         }
 
@@ -609,6 +615,9 @@ namespace librealsense
                             len, transferred, CONTROL_TRANSFER_TIMEOUT);
                 }
             }, [this](){ return !_messenger; });
+
+            if (sts == RS2_USB_STATUS_NO_DEVICE)
+                throw std::runtime_error("usb device disconnected");
 
             return sts == RS2_USB_STATUS_SUCCESS;
         }
@@ -645,20 +654,20 @@ namespace librealsense
             _interrupt_request = _messenger->create_request(iep);
             _interrupt_request->set_buffer(std::vector<uint8_t>(INTERRUPT_BUFFER_SIZE));
             _interrupt_request->set_callback(_interrupt_callback);
-            _messenger->submit_request(_interrupt_request);
+            auto sts = _messenger->submit_request(_interrupt_request);
+            if (sts != RS2_USB_STATUS_SUCCESS)
+                throw std::runtime_error("failed to submit interrupt request, error: " + usb_status_to_string.at(sts));
         }
 
         void rs_uvc_device::close_uvc_device()
         {
-            if(_interrupt_callback)
-                _interrupt_callback->cancel();
+            _streamers.clear();
 
             if(_interrupt_request)
+            {
                 _messenger->cancel_request(_interrupt_request);
-
-            _interrupt_request.reset();
-
-            _streamers.clear();
+                _interrupt_request.reset();
+            }
         }
 
         // Probe (Set and Get) streaming control block
@@ -821,9 +830,9 @@ namespace librealsense
                 }
             }, [this](){ return !_messenger; });
 
-            if (sts != RS2_USB_STATUS_SUCCESS) {
-                auto e = strerror(errno);
-                LOG_ERROR("Probe-commit control transfer failed with errno: " << errno << " - " << e);
+            if (sts != RS2_USB_STATUS_SUCCESS)
+            {
+                LOG_ERROR("Probe-commit control transfer failed with error: " << usb_status_to_string.at(sts));
                 return sts;
             }
 
