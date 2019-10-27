@@ -155,6 +155,8 @@ namespace librealsense
                 if(_running)
                     return;
 
+                _context.messenger->reset_endpoint(_read_endpoint, RS2_USB_ENDPOINT_DIRECTION_READ);
+
                 _running = true;
 
                 for(auto&& r : _requests)

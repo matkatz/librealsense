@@ -104,7 +104,7 @@ namespace librealsense
             rs_usb_request_callback                 _interrupt_callback;
             uint8_t                                 _usb_request_count;
 
-            mutable blocking_dispatcher             _action_dispatcher;
+            mutable dispatcher                      _action_dispatcher;
             // uvc internal
             std::shared_ptr<uvc_parser>             _parser;
             std::vector<std::shared_ptr<uvc_streamer>> _streamers;

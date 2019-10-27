@@ -257,6 +257,25 @@ public:
         }
     }
 
+    template<class T>
+    void invoke_and_wait(T item, std::function<bool()> exit_condition, bool is_blocking = false)
+    {
+        bool done = false;
+
+        //action
+        auto func = std::move(item);
+        invoke([&, func](dispatcher::cancellable_timer c)
+        {
+            func(c);
+            done = true;
+            _blocking_invoke_cv.notify_one();
+        }, is_blocking);
+
+        //wait
+        std::unique_lock<std::mutex> lk(_blocking_invoke_mutex);
+        while(_blocking_invoke_cv.wait_for(lk, std::chrono::milliseconds(10), [&](){ return !done && !exit_condition(); }));
+    }
+
     void start()
     {
         std::unique_lock<std::mutex> lock(_was_stopped_mutex);
@@ -335,6 +354,9 @@ private:
     std::condition_variable _was_flushed_cv;
     std::mutex _was_flushed_mutex;
 
+    std::condition_variable _blocking_invoke_cv;
+    std::mutex _blocking_invoke_mutex;
+
     std::atomic<bool> _is_alive;
 };
 
@@ -381,38 +403,6 @@ private:
     T _operation;
     dispatcher _dispatcher;
     std::atomic<bool> _stopped;
-};
-
-class blocking_dispatcher
-{
-public:
-    blocking_dispatcher(unsigned int cap) : _dispatcher(cap) {}
-    ~blocking_dispatcher() { _dispatcher.stop(); }
-
-    void start() { _dispatcher.start(); }
-    void stop() { _dispatcher.stop(); }
-    void invoke(std::function<void(dispatcher::cancellable_timer)> f) { _dispatcher.invoke(std::move(f)); }
-    void invoke_and_wait(std::function<void(dispatcher::cancellable_timer)> f, std::function<bool()> exit_condition)
-    {
-        bool done = false;
-
-        //action
-        auto func = std::move(f);
-        _dispatcher.invoke([&, this, func](dispatcher::cancellable_timer c)
-        {
-            func(c);
-            done = true;
-            _cv.notify_one();
-        });
-
-        //wait
-        std::unique_lock<std::mutex> lk(_mutex);
-        while(_cv.wait_for(lk, std::chrono::milliseconds(10), [&](){ return !done && !exit_condition(); }));
-    }
-private:
-    std::mutex              _mutex;
-    std::condition_variable _cv;
-    dispatcher              _dispatcher;
 };
 
 class watchdog

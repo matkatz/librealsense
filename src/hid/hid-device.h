@@ -46,7 +46,7 @@ namespace librealsense
             usb_status set_feature_report(unsigned char power, int report_id, int fps = 0);
 
             bool _running = false;
-            blocking_dispatcher _action_dispatcher;
+            dispatcher _action_dispatcher;
 
             hid_callback _callback;
             rs_usb_device _usb_device;

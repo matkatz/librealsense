@@ -51,7 +51,7 @@ namespace librealsense
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;
 
-            blocking_dispatcher _action_dispatcher;
+            dispatcher _action_dispatcher;
 
             std::shared_ptr<watchdog> _watchdog;
             uint32_t _read_buff_length;
