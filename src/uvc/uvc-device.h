@@ -18,53 +18,6 @@
 #include <chrono>
 #include <thread>
 
-/** Converts an unaligned one-byte integer into an int8 */
-#define B_TO_BYTE(p) ((int8_t)(p)[0])
-
-/** Converts an unaligned two-byte little-endian integer into an int16 */
-#define SW_TO_SHORT(p) ((uint8_t)(p)[0] | \
-                       ((int8_t)(p)[1] << 8))
-
-/** Converts an unaligned four-byte little-endian integer into an int32 */
-#define DW_TO_INT(p) ((uint8_t)(p)[0] | \
-                     ((uint8_t)(p)[1] << 8) | \
-                     ((uint8_t)(p)[2] << 16) | \
-                     ((int8_t)(p)[3] << 24))
-
-/** Converts an unaligned eight-byte little-endian integer into an int64 */
-#define QW_TO_QUAD(p) (((uint64_t)(p)[0]) | \
-                      (((uint64_t)(p)[1]) << 8) | \
-                      (((uint64_t)(p)[2]) << 16) | \
-                      (((uint64_t)(p)[3]) << 24) | \
-                      (((uint64_t)(p)[4]) << 32) | \
-                      (((uint64_t)(p)[5]) << 40) | \
-                      (((uint64_t)(p)[6]) << 48) | \
-                      (((int64_t)(p)[7]) << 56))
-
-
-/** Converts an int16 into an unaligned two-byte little-endian integer */
-#define SHORT_TO_SW(s, p) \
-  (p)[0] = (uint8_t)(s); \
-  (p)[1] = (uint8_t)((s) >> 8);
-
-/** Converts an int32 into an unaligned four-byte little-endian integer */
-#define INT_TO_DW(i, p) \
-  (p)[0] = (uint8_t)(i); \
-  (p)[1] = (uint8_t)((i) >> 8); \
-  (p)[2] = (uint8_t)((i) >> 16); \
-  (p)[3] = (uint8_t)((i) >> 24);
-
-/** Converts an int64 into an unaligned eight-byte little-endian integer */
-#define QUAD_TO_QW(i, p) \
-  (p)[0] = (uint8_t)(i); \
-  (p)[1] = (uint8_t)((i) >> 8); \
-  (p)[2] = (uint8_t)((i) >> 16); \
-  (p)[3] = (uint8_t)((i) >> 24); \
-  (p)[4] = (uint8_t)((i) >> 32); \
-  (p)[5] = (uint8_t)((i) >> 40); \
-  (p)[6] = (uint8_t)((i) >> 48); \
-  (p)[7] = (uint8_t)((i) >> 56); \
-
 typedef void(uvc_frame_callback_t)(struct librealsense::platform::frame_object *frame, void *user_ptr);
 
 namespace librealsense
@@ -147,13 +100,11 @@ namespace librealsense
 
             rs_usb_device                           _usb_device = nullptr;
             rs_usb_messenger                        _messenger;
-            mutable std::mutex                      _interrupt_mutex;
             rs_usb_request                          _interrupt_request;
             rs_usb_request_callback                 _interrupt_callback;
             uint8_t                                 _usb_request_count;
 
-            mutable std::mutex                      _power_mutex;
-
+            mutable blocking_dispatcher             _action_dispatcher;
             // uvc internal
             std::shared_ptr<uvc_parser>             _parser;
             std::vector<std::shared_ptr<uvc_streamer>> _streamers;

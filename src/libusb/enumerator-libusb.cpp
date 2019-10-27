@@ -66,11 +66,11 @@ namespace librealsense
         std::vector<usb_device_info> usb_enumerator::query_devices_info()
         {
             std::vector<usb_device_info> rv;
-            usb_device_list list;
+            auto ctx = std::make_shared<usb_context>();
 
-            for (ssize_t idx = 0; idx < list.count(); ++idx)
+            for (ssize_t idx = 0; idx < ctx->device_count(); ++idx)
             {
-                auto device = list.get(idx);
+                auto device = ctx->get_device(idx);
                 if(device == NULL)
                     continue;
                 libusb_device_descriptor desc = { 0 };
@@ -85,11 +85,11 @@ namespace librealsense
 
         rs_usb_device usb_enumerator::create_usb_device(const usb_device_info& info)
         {
-            usb_device_list list;
+            auto ctx = std::make_shared<usb_context>();
 
-            for (ssize_t idx = 0; idx < list.count(); ++idx)
+            for (ssize_t idx = 0; idx < ctx->device_count(); ++idx)
             {
-                auto device = list.get(idx);
+                auto device = ctx->get_device(idx);
                 if(device == NULL || get_device_path(device) != info.id)
                     continue;
 
@@ -98,7 +98,7 @@ namespace librealsense
 
                 try
                 {
-                    return std::make_shared<usb_device_libusb>(device, desc, info, list.get_context());
+                    return std::make_shared<usb_device_libusb>(device, desc, info, ctx);
                 }
                 catch(std::exception e)
                 {

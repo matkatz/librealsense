@@ -382,3 +382,75 @@ private:
     dispatcher _dispatcher;
     std::atomic<bool> _stopped;
 };
+
+class blocking_dispatcher
+{
+public:
+    blocking_dispatcher(unsigned int cap) : _dispatcher(cap) {}
+    ~blocking_dispatcher() { _dispatcher.stop(); }
+
+    void start() { _dispatcher.start(); }
+    void stop() { _dispatcher.stop(); }
+    void invoke(std::function<void(dispatcher::cancellable_timer)> f) { _dispatcher.invoke(std::move(f)); }
+    void invoke_and_wait(std::function<void(dispatcher::cancellable_timer)> f, std::function<bool()> exit_condition)
+    {
+        bool done = false;
+
+        //action
+        auto func = std::move(f);
+        _dispatcher.invoke([&, this, func](dispatcher::cancellable_timer c)
+        {
+            func(c);
+            done = true;
+            _cv.notify_one();
+        });
+
+        //wait
+        std::unique_lock<std::mutex> lk(_mutex);
+        while(_cv.wait_for(lk, std::chrono::milliseconds(10), [&](){ return !done && !exit_condition(); }));
+    }
+private:
+    std::mutex              _mutex;
+    std::condition_variable _cv;
+    dispatcher              _dispatcher;
+};
+
+class watchdog
+{
+public:
+    watchdog(std::function<void()> operation, uint64_t timeout_ms) :
+            _operation(std::move(operation)), _timeout_ms(timeout_ms)
+    {
+        _watcher = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
+        {
+            if(cancellable_timer.try_sleep(_timeout_ms))
+            {
+                if(!_kicked)
+                    _operation();
+                std::lock_guard<std::mutex> lk(_m);
+                _kicked = false;
+            }
+        });
+    }
+
+    ~watchdog()
+    {
+        if(_running)
+            stop();
+    }
+
+    void start() { std::lock_guard<std::mutex> lk(_m); _watcher->start(); _running = true; }
+    void stop() { { std::lock_guard<std::mutex> lk(_m); _running = false; } _watcher->stop(); }
+    bool running() { std::lock_guard<std::mutex> lk(_m); return _running; }
+    void set_timeout(uint64_t timeout_ms) { std::lock_guard<std::mutex> lk(_m); _timeout_ms = timeout_ms; }
+    void kick() { std::lock_guard<std::mutex> lk(_m); _kicked = true; }
+
+private:
+    std::mutex _m;
+    uint64_t _timeout_ms;
+    bool _kicked = false;
+    bool _running = false;
+    bool _blocker = true;
+    std::function<void()> _operation;
+    std::shared_ptr<active_object<>> _watcher;
+};

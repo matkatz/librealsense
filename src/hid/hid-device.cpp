@@ -51,7 +51,8 @@ namespace librealsense
         }
 
         rs_hid_device::rs_hid_device(rs_usb_device usb_device)
-            : _usb_device(usb_device)
+            : _usb_device(usb_device),
+              _action_dispatcher(10)
         {
             _id_to_sensor[REPORT_ID_GYROMETER_3D] = gyro;
             _id_to_sensor[REPORT_ID_ACCELEROMETER_3D] = accel;
@@ -59,11 +60,12 @@ namespace librealsense
             _sensor_to_id[gyro] = REPORT_ID_GYROMETER_3D;
             _sensor_to_id[accel] = REPORT_ID_ACCELEROMETER_3D;
             _sensor_to_id[custom] = REPORT_ID_CUSTOM;
+            _action_dispatcher.start();
         }
 
         rs_hid_device::~rs_hid_device()
         {
-
+            _action_dispatcher.stop();
         }
 
         std::vector<hid_sensor> rs_hid_device::get_sensors()
@@ -93,71 +95,80 @@ namespace librealsense
 
         void rs_hid_device::stop_capture()
         {
+            _action_dispatcher.invoke_and_wait([this](dispatcher::cancellable_timer c)
             {
-                std::lock_guard<std::mutex> lk(_mutex);
-                if (!_running)
+                if(!_running)
                     return;
-                _running = false;
+
+                _request_callback->cancel();
+
+                _queue.clear();
 
                 for (auto&& r : _requests)
-                {
                     _messenger->cancel_request(r);
-                    r.reset();
-                }
-            }
 
-            _handle_interrupts_thread->stop();
-            
-            _messenger.reset();
+                _requests.clear();
+
+                _handle_interrupts_thread->stop();
+
+                _messenger.reset();
+
+               _running = false;
+            }, [this](){ return !_running; });
         }
 
         void rs_hid_device::start_capture(hid_callback callback)
         {
-            std::lock_guard<std::mutex> lk(_mutex);
-            if(_running)
-                return;
-            _running = true;
-
-            _callback = callback;
-
-            auto in = get_hid_interface()->get_number();
-            _messenger = _usb_device->open(in);
-
-            _handle_interrupts_thread = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
+            _action_dispatcher.invoke_and_wait([this, callback](dispatcher::cancellable_timer c)
             {
-                handle_interrupt();
-            });
-
-            _handle_interrupts_thread->start();
-
-            _request_callback = std::make_shared<usb_request_callback>([&](platform::rs_usb_request r)
-            {
-                std::lock_guard<std::mutex> lk(_mutex);
-                if(!_running)
+                if(_running)
                     return;
 
-                if(r->get_actual_length() == sizeof(REALSENSE_HID_REPORT))
+                _callback = callback;
+
+                auto in = get_hid_interface()->get_number();
+                _messenger = _usb_device->open(in);
+
+                _handle_interrupts_thread = std::make_shared<active_object<>>([this](dispatcher::cancellable_timer cancellable_timer)
                 {
-                    REALSENSE_HID_REPORT report;
-                    memcpy(&report, r->get_buffer().data(), r->get_actual_length());
-                    _queue.enqueue(std::move(report));
+                    handle_interrupt();
+                });
+
+                _handle_interrupts_thread->start();
+
+                _request_callback = std::make_shared<usb_request_callback>([&](platform::rs_usb_request r)
+                    {
+                        _action_dispatcher.invoke([this, r](dispatcher::cancellable_timer c)
+                        {
+                            if(!_running)
+                                return;
+                            if(r->get_actual_length() == sizeof(REALSENSE_HID_REPORT))
+                            {
+                                REALSENSE_HID_REPORT report;
+                                memcpy(&report, r->get_buffer().data(), r->get_actual_length());
+                                _queue.enqueue(std::move(report));
+                            }
+                            auto sts = _messenger->submit_request(r);
+                            if (sts != platform::RS2_USB_STATUS_SUCCESS)
+                                LOG_ERROR("failed to submit UVC request");
+                        });
+
+                    });
+
+                _requests = std::vector<rs_usb_request>(USB_REQUEST_COUNT);
+                for(auto&& r : _requests)
+                {
+                    r = _messenger->create_request(get_hid_endpoint());
+                    r->set_buffer(std::vector<uint8_t>(sizeof(REALSENSE_HID_REPORT)));
+                    r->set_callback(_request_callback);
                 }
 
-                auto sts = _messenger->submit_request(r);
-                if (sts != platform::RS2_USB_STATUS_SUCCESS)
-                    LOG_ERROR("failed to submit UVC request");
-            });
+                _running = true;
 
-            _requests = std::vector<rs_usb_request>(USB_REQUEST_COUNT);
-            for(auto&& r : _requests)
-            {
-                r = _messenger->create_request(get_hid_endpoint());
-                r->set_buffer(std::vector<uint8_t>(sizeof(REALSENSE_HID_REPORT)));
-                r->set_callback(_request_callback);
-            }
+                for(auto&& r : _requests)
+                    _messenger->submit_request(r);
 
-            for(auto&& r : _requests)
-                _messenger->submit_request(r);
+            }, [this](){ return _running; });
         }
 
         void rs_hid_device::handle_interrupt()
