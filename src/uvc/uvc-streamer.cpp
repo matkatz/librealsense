@@ -7,7 +7,6 @@
 const int UVC_PAYLOAD_MAX_HEADER_LENGTH         = 256;
 const int DEQUEUE_MILLISECONDS_TIMEOUT          = 50;
 const int ENDPOINT_RESET_MILLISECONDS_TIMEOUT   = 100;
-const int WATCHDOG_RESET_MILLISECONDS_TIMEOUT   = 5000;
 
 void cleanup_frame(backend_frame *ptr) {
     if (ptr) ptr->owner->deallocate(ptr);
@@ -101,14 +100,14 @@ namespace librealsense
              {
                  _action_dispatcher.invoke([this](dispatcher::cancellable_timer c)
                    {
-                       if(!_running)
+                       if(!_running || !_frame_arrived)
                            return;
 
                        LOG_ERROR("uvc streamer watchdog triggered on endpoint: " << (int)_read_endpoint->get_address());
                        _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
-                       _watchdog->set_timeout(WATCHDOG_RESET_MILLISECONDS_TIMEOUT);
+                       _frame_arrived = false;
                    });
-             }, WATCHDOG_RESET_MILLISECONDS_TIMEOUT);
+             }, _watchdog_timeout);
 
             _watchdog->start();
 
@@ -126,7 +125,6 @@ namespace librealsense
                         if(f)
                         {
                             _frame_arrived = true;
-                            _watchdog->set_timeout(_watchdog_timeout);
                             _watchdog->kick();
                             memcpy(f->pixels.data(), r->get_buffer().data(), r->get_buffer().size());
                             uvc_process_bulk_payload(std::move(f), r->get_actual_length(), _queue);
