@@ -45,11 +45,10 @@ namespace librealsense
 
         private:
             bool _running = false;
-            bool _stopping = false;
             bool _frame_arrived = false;
             bool _publish_frames = true;
+            int _active_requests = 0;
 
-            int _returned = 0;
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;
 
@@ -66,6 +65,7 @@ namespace librealsense
 
             void init();
             void flush();
+            bool wait_for_requests(uint32_t timeout_ms);
         };
     }
 }
