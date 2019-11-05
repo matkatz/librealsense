@@ -107,10 +107,8 @@ namespace librealsense
         exposure_priority_attribute     = (1u << 4),
         roi_attribute                   = (1u << 5),
         preset_attribute                = (1u << 6),
-        projector_type_attribute        = (1u << 7),
-        laser_power_mode_attribute      = (1u << 8),
-        led_power_mode_attribute        = (1u << 9),
-        led_power_attribute             = (1u << 10)
+        emitter_mode_attribute          = (1u << 7),
+        led_power_attribute             = (1u << 8)
     };
 
     /**\brief md_depth_control_attributes - bit mask to find active attributes,
@@ -384,10 +382,7 @@ namespace librealsense
         uint32_t    exposure_roi_top;
         uint32_t    exposure_roi_bottom;
         uint8_t     preset;
-        uint8_t     projectorType;
-        uint16_t    reserved;
-        uint8_t     laserPowerMode;
-        uint8_t     ledPowerMode;
+        uint8_t     emitterMode;
         uint16_t    ledPower;
     };
 

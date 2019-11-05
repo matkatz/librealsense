@@ -285,8 +285,6 @@ namespace librealsense
             CASE(ENABLE_POSE_JUMPING)
             CASE(ENABLE_DYNAMIC_CALIBRATION)
             CASE(DEPTH_OFFSET)
-            CASE(PROJECTOR_TYPE)
-            CASE(LED_ENABLED)
             CASE(LED_POWER)
         default: assert(!is_valid(value)); return UNKNOWN_VALUE;
         }
@@ -399,9 +397,8 @@ namespace librealsense
             CASE(MANUAL_WHITE_BALANCE)
             CASE(POWER_LINE_FREQUENCY)
             CASE(LOW_LIGHT_COMPENSATION)
+            CASE(FRAME_EMITTER_MODE)
             CASE(FRAME_LED_POWER)
-            CASE(FRAME_LED_POWER_MODE)
-            CASE(FRAME_PROJECTOR_TYPE)
 
         default: assert(!is_valid(value)); return UNKNOWN_VALUE;
         }
