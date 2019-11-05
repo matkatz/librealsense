@@ -166,6 +166,7 @@ namespace librealsense
                     auto sts = _context.messenger->submit_request(r);
                     if (sts != platform::RS2_USB_STATUS_SUCCESS)
                         throw std::runtime_error("failed to submit UVC request while start streaming");
+                    _active_requests++;
                 }
 
                 _publish_frame_thread->start();
@@ -188,7 +189,7 @@ namespace librealsense
 
                 if (!wait_for_requests(_watchdog_timeout))
                 {
-                    LOG_ERROR("requests didn't returned on time");
+                    LOG_ERROR("requests didn't returned on time, active request count: " << _active_requests.load());
                     for(auto&& r : _requests)
                         _context.messenger->cancel_request(r);
                 }
