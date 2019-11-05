@@ -17,7 +17,7 @@ namespace librealsense
     namespace platform
     {
         uvc_streamer::uvc_streamer(uvc_streamer_context context) :
-            _context(context), _action_dispatcher(10)
+            _context(context), _action_dispatcher(10), _active_requests(0)
         {
             auto inf = context.usb_device->get_interface(context.control->bInterfaceNumber);
             if (inf == nullptr)
@@ -113,10 +113,10 @@ namespace librealsense
 
             _request_callback = std::make_shared<usb_request_callback>([this](platform::rs_usb_request r)
             {
+                _active_requests--;
+
                 _action_dispatcher.invoke([this, r](dispatcher::cancellable_timer c)
                 {
-                    _active_requests--;
-
                     if (!_running)
                         return;
 
@@ -188,6 +188,7 @@ namespace librealsense
 
                 if (!wait_for_requests(_watchdog_timeout))
                 {
+                    LOG_ERROR("requests didn't returned on time");
                     for(auto&& r : _requests)
                         _context.messenger->cancel_request(r);
                 }
@@ -237,7 +238,7 @@ namespace librealsense
         bool uvc_streamer::wait_for_requests(uint32_t timeout_ms)
         {
             auto start = std::chrono::system_clock::now();
-            while (_active_requests > 0)
+            while (_active_requests.load() > 0)
             {
                 auto end = std::chrono::system_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -246,7 +247,7 @@ namespace librealsense
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
             }
-            return _active_requests == 0;
+            return _active_requests.load() == 0;
         }
     }
 }

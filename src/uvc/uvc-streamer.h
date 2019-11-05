@@ -47,7 +47,7 @@ namespace librealsense
             bool _running = false;
             bool _frame_arrived = false;
             bool _publish_frames = true;
-            int _active_requests = 0;
+            std::atomic<int> _active_requests;
 
             int64_t _watchdog_timeout;
             uvc_streamer_context _context;
