@@ -4,9 +4,9 @@
 #include "uvc-streamer.h"
 #include "../backend.h"
 
-const int UVC_PAYLOAD_MAX_HEADER_LENGTH         = 1024;
-const int DEQUEUE_MILLISECONDS_TIMEOUT          = 50;
-const int ENDPOINT_RESET_MILLISECONDS_TIMEOUT   = 100;
+const int UVC_PAYLOAD_MAX_HEADER_LENGTH = 1024;
+const int DEQUEUE_MILLISECONDS_TIMEOUT = 50;
+const int ENDPOINT_RESET_MILLISECONDS_TIMEOUT = 100;
 
 void cleanup_frame(backend_frame *ptr) {
     if (ptr) ptr->owner->deallocate(ptr);
@@ -91,38 +91,42 @@ namespace librealsense
                 backend_frame_ptr fp(nullptr, [](backend_frame *) {});
                 if (_queue.dequeue(&fp, DEQUEUE_MILLISECONDS_TIMEOUT))
                 {
-                    if(_publish_frames && running())
+                    if (_publish_frames && running())
                         _context.user_cb(_context.profile, fp->fo, []() mutable {});
                 }
             });
 
             _watchdog = std::make_shared<watchdog>([this]()
-             {
-                 _action_dispatcher.invoke([this](dispatcher::cancellable_timer c)
-                   {
-                       if(!_running || !_frame_arrived)
-                           return;
+            {
+                _action_dispatcher.invoke([this](dispatcher::cancellable_timer c)
+                {
+                    if (!_running || !_frame_arrived)
+                        return;
 
-                       LOG_ERROR("uvc streamer watchdog triggered on endpoint: " << (int)_read_endpoint->get_address());
-                       _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
-                       _frame_arrived = false;
-                   });
-             }, _watchdog_timeout);
+                    LOG_ERROR("uvc streamer watchdog triggered on endpoint: " << (int)_read_endpoint->get_address());
+                    _context.messenger->reset_endpoint(_read_endpoint, ENDPOINT_RESET_MILLISECONDS_TIMEOUT);
+                    _frame_arrived = false;
+                });
+            }, _watchdog_timeout);
 
             _watchdog->start();
 
             _request_callback = std::make_shared<usb_request_callback>([this](platform::rs_usb_request r)
             {
+                if (_stopping)
+                {
+                    _returned++;
+                }
                 _action_dispatcher.invoke([this, r](dispatcher::cancellable_timer c)
                 {
-                    if(!_running)
-                      return;
+                    if (!_running)
+                        return;
 
                     auto al = r->get_actual_length();
-                    if(al > 0 && al == r->get_buffer().data()[0] + _context.control->dwMaxVideoFrameSize)
+                    if (al > 0 && al == r->get_buffer().data()[0] + _context.control->dwMaxVideoFrameSize)
                     {
                         auto f = backend_frame_ptr(_frames_archive->allocate(), &cleanup_frame);
-                        if(f)
+                        if (f)
                         {
                             _frame_arrived = true;
                             _watchdog->kick();
@@ -131,14 +135,18 @@ namespace librealsense
                         }
                     }
 
-                    auto sts = _context.messenger->submit_request(r);
-                    if(sts != platform::RS2_USB_STATUS_SUCCESS)
-                        LOG_ERROR("failed to submit UVC request, error: " << sts);
+                    if (!_stopping)
+                    {
+                        auto sts = _context.messenger->submit_request(r);
+                        if (sts != platform::RS2_USB_STATUS_SUCCESS)
+                            LOG_ERROR("failed to submit UVC request, error: " << sts);
+                    }
+
                 });
             });
 
             _requests = std::vector<rs_usb_request>(_context.request_count);
-            for(auto&& r : _requests)
+            for (auto&& r : _requests)
             {
                 r = _context.messenger->create_request(_read_endpoint);
                 r->set_buffer(std::vector<uint8_t>(_read_buff_length));
@@ -150,42 +158,47 @@ namespace librealsense
         {
             _action_dispatcher.invoke_and_wait([this](dispatcher::cancellable_timer c)
             {
-                if(_running)
+                if (_running)
                     return;
 
                 _context.messenger->reset_endpoint(_read_endpoint, RS2_USB_ENDPOINT_DIRECTION_READ);
 
                 _running = true;
 
-                for(auto&& r : _requests)
+                for (auto&& r : _requests)
                 {
                     auto sts = _context.messenger->submit_request(r);
-                    if(sts != platform::RS2_USB_STATUS_SUCCESS)
+                    if (sts != platform::RS2_USB_STATUS_SUCCESS)
                         throw std::runtime_error("failed to submit UVC request while start streaming");
                 }
 
                 _publish_frame_thread->start();
 
-            }, [this](){ return _running; });
+            }, [this]() { return _running; });
         }
 
         void uvc_streamer::stop()
         {
             _action_dispatcher.invoke_and_wait([this](dispatcher::cancellable_timer c)
             {
-                if(!_running)
+                if (!_running)
                     return;
 
-                _request_callback->cancel();
+                _stopping = true;
+                // _request_callback->cancel();
 
                 _watchdog->stop();
+
+
+                while (_returned < _requests.size())
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
                 _frames_archive->stop_allocation();
 
                 _queue.clear();
 
-                for(auto&& r : _requests)
-                  _context.messenger->cancel_request(r);
+                // for(auto&& r : _requests)
+                //   _context.messenger->cancel_request(r);
 
                 _requests.clear();
 
@@ -197,7 +210,7 @@ namespace librealsense
 
                 _running = false;
 
-            }, [this](){ return !_running; });
+            }, [this]() { return !_running; });
         }
 
         void uvc_streamer::flush()
@@ -218,11 +231,11 @@ namespace librealsense
         bool uvc_streamer::wait_for_first_frame(uint32_t timeout_ms)
         {
             auto start = std::chrono::system_clock::now();
-            while(!_frame_arrived)
+            while (!_frame_arrived)
             {
                 auto end = std::chrono::system_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-                if(duration > timeout_ms)
+                if (duration > timeout_ms)
                     break;
             }
             return _frame_arrived;
