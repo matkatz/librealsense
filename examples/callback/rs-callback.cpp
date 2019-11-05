@@ -2,66 +2,68 @@
 // Copyright(c) 2017 Intel Corporation. All Rights Reserved.
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
-#include <iostream>
-#include <map>
-#include <chrono>
-#include <mutex>
-#include <thread>
+#include "example.hpp"          // Include short list of convenience functions for rendering
 
-// The callback example demonstrates asynchronous usage of the pipeline
 int main(int argc, char * argv[]) try
 {
-    //rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
+    rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
+    window app(1280, 720, "RealSense Capture Example");
 
-    std::map<int, int> counters;
-    std::map<int, std::string> stream_names;
-    std::mutex mutex;
+    rs2::colorizer color_map;
 
-    // Define frame callback
-    // The callback is executed on a sensor thread and can be called simultaneously from multiple sensors
-    // Therefore any modification to common memory should be done under lock
-    auto callback = [&](const rs2::frame& frame)
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        if (rs2::frameset fs = frame.as<rs2::frameset>())
-        {
-            // With callbacks, all synchronized stream will arrive in a single frameset
-            for (const rs2::frame& f : fs)
-                counters[f.get_profile().unique_id()]++;
-        }
-        else
-        {
-            // Stream that bypass synchronization (such as IMU) will produce single frames
-            counters[frame.get_profile().unique_id()]++;
-        }
-    };
-
-    // Declare RealSense pipeline, encapsulating the actual device and sensors.
     rs2::pipeline pipe;
+    rs2::config cfg;
+    int width = 640;
+    int height = 480;
+    cfg.enable_stream(RS2_STREAM_COLOR, width, height);
+    cfg.enable_stream(RS2_STREAM_DEPTH, width, height);
+    cfg.enable_stream(RS2_STREAM_INFRARED, width, height);
 
-    // Start streaming through the callback with default recommended configuration
-    // The default video configuration contains Depth and Color streams
-    // If a device is capable to stream IMU data, both Gyro and Accelerometer are enabled by default
-    //
-    rs2::pipeline_profile profiles = pipe.start(callback);
+    auto p = cfg.resolve(pipe);
+    auto dev = p.get_device();
 
-    // Collect the enabled streams names
-    for (auto p : profiles.get_streams())
-        stream_names[p.unique_id()] = p.stream_name();
+    auto sensors = dev.query_sensors();
 
-    std::cout << "RealSense callback sample" << std::endl << std::endl;
+    rs2::sensor cs;
+    rs2::sensor ds;
 
+    for (auto&& s : sensors)
+    {
+        for (auto&& p : s.get_stream_profiles())
+        {
+            if (p.stream_type() == RS2_STREAM_COLOR && !cs)
+                cs = s;
+            if (p.stream_type() == RS2_STREAM_DEPTH && !cs)
+                ds = s;
+        }
+    }
+    auto rcs = cs.as<rs2::roi_sensor>();
+    auto iteration = 0;
     while (true)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        printf("iteration: %d\n", iteration++);
+        pipe.start(cfg);
 
-        std::lock_guard<std::mutex> lock(mutex);
-
-        std::cout << "\r";
-        for (auto p : counters)
+        bool state = false;
+        int frame_count = 0;
+        while (app && frame_count < 100) // Application still alive?
         {
-            std::cout << stream_names[p.first] << "[" << p.first << "]: " << p.second << " [frames] || ";
+            rs2::frameset data = pipe.wait_for_frames().apply_filter(color_map);
+            if (frame_count++ % 10 == 0)
+            {
+                auto roi = state ? rs2::region_of_interest{ 0, 0, width / 2, height / 2 } : rs2::region_of_interest{ width / 2, height / 2, width - 1, height - 1 };
+                data.foreach_rs([](const rs2::frame& f) { printf(" %s: %d", f.get_profile().stream_name().c_str(), f.get_frame_number()); });
+                printf(", frameset: %d\n", frame_count);
+
+                printf("set new roi: %d, %d, %d, %d\n", roi.min_x, roi.min_y, roi.max_x, roi.max_y);
+                rcs.set_region_of_interest(roi);
+                auto new_roi = rcs.get_region_of_interest();
+                printf("get new roi: %d, %d, %d, %d\n\n", new_roi.min_x, new_roi.min_y, new_roi.max_x, new_roi.max_y);
+                state = !state;
+            }
+            app.show(data);
         }
+        pipe.stop();
     }
 
     return EXIT_SUCCESS;
