@@ -41,6 +41,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final int INDEX_PRESETS = 2;
     private static final int INDEX_UPDATE = 3;
     private static final int INDEX_UPDATE_UNSIGNED = 4;
+    private static final int INDEX_TERMINAL = 5;
 
     private Device _device;
 
@@ -113,6 +114,7 @@ public class SettingsActivity extends AppCompatActivity {
             settingsMap.put(INDEX_ADVANCE_MODE,"Disable advanced mode");
             settingsMap.put(INDEX_PRESETS,"Presets");
         }
+        settingsMap.put(INDEX_TERMINAL,"Terminal");
         final String[] settings = new String[settingsMap.values().size()];
         settingsMap.values().toArray(settings);
         final ArrayAdapter adapter = new ArrayAdapter<>(this, R.layout.files_list_view, settings);
@@ -149,6 +151,11 @@ public class SettingsActivity extends AppCompatActivity {
                         Intent intent = new Intent(SettingsActivity.this, FileBrowserActivity.class);
                         intent.putExtra(getString(R.string.browse_folder), getString(R.string.realsense_folder) + File.separator +  "firmware");
                         startActivityForResult(intent, OPEN_FILE_REQUEST_CODE);
+                        break;
+                    }
+                    case INDEX_TERMINAL: {
+                        Intent intent = new Intent(SettingsActivity.this, TerminalActivity.class);
+                        startActivity(intent);
                         break;
                     }
                     default:
