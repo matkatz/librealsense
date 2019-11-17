@@ -3,6 +3,7 @@ package com.intel.realsense.camera;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -23,6 +24,7 @@ import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.HWCommand;
 import com.intel.realsense.librealsense.RsContext;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -84,15 +86,9 @@ public class TerminalActivity extends AppCompatActivity {
             try(Device device = devices.createDevice(0)){
                 DebugProtocol dp = device.as(Extension.DEBUG);
                 String content = mInputText.getText().toString();
-                HWCommand opCode = HWCommand.valueOf(content);
 
-                byte[] res = dp.SendAndReceiveRawData(opCode);
-
-                String strArray[] = new String[res.length];
-                for(int i = 0; i < res.length; i++)
-                    strArray[i] = String.valueOf((int)res[i]);
-
-                mOutputText.setText(Arrays.toString(strArray));
+                String res = dp.SendAndReceiveRawData(content);
+                mOutputText.setText(res);
             }
             catch(Exception e){
                 mOutputText.setText("Error: " + e.getMessage());

@@ -1,6 +1,12 @@
 package com.intel.realsense.librealsense;
 
+import android.os.Environment;
+
+import java.io.File;
+
 public class DebugProtocol extends Device {
+    private File mCommandsFile;
+
     DebugProtocol(long handle) {
         super(handle);
     }
@@ -14,7 +20,10 @@ public class DebugProtocol extends Device {
     }
 
     public String SendAndReceiveRawData(String command){
-        return nSendRawData(mHandle, command);
+        if(mCommandsFile == null)
+            mCommandsFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/CommandsDS5.xml" );
+        byte[] data = nSendAndReceiveData(mHandle, mCommandsFile.getAbsolutePath(), command);
+        return new String(data);
     }
 
     public byte[] SendAndReceiveRawData(byte[] buffer){
@@ -23,4 +32,5 @@ public class DebugProtocol extends Device {
 
     private static native byte[] nSendAndReceiveRawData(long handle, byte[] buffer);
     private static native String nSendRawData(long handle, String command);
+    private static native byte[] nSendAndReceiveData(long handle, String filePath, String command);
 }
