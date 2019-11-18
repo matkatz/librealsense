@@ -16,6 +16,16 @@
         android:textColor="#ffffff"
         android:text="Auto Complete" />
 
+    <Switch
+        android:id="@+id/terminal_stream"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:paddingTop="20dp"
+        android:textColor="#ffffff"
+        android:text="Streaming"
+        android:layout_below="@+id/terminal_input_auto_complete"/>
+
     <TextView
         android:id="@+id/terminal_input_text_view"
         android:layout_width="wrap_content"
@@ -23,7 +33,7 @@
         android:paddingTop="20dp"
         android:textColor="#ffffff"
         android:text="Input:"
-        android:layout_below="@+id/terminal_input_auto_complete"/>
+        android:layout_below="@+id/terminal_stream"/>
 
     <AutoCompleteTextView
         android:id="@+id/terminal_input_edit_text"

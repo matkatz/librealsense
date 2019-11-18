@@ -20,6 +20,8 @@ import com.intel.realsense.librealsense.DebugProtocol;
 import com.intel.realsense.librealsense.Device;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.Extension;
+import com.intel.realsense.librealsense.FrameSet;
+import com.intel.realsense.librealsense.Pipeline;
 import com.intel.realsense.librealsense.RsContext;
 
 import java.io.File;
@@ -30,11 +32,15 @@ public class TerminalActivity extends AppCompatActivity {
     private static final int OPEN_FILE_REQUEST_CODE = 0;
 
     private Switch mAutoComplete;
+    private Switch mStreaming;
+
     private Button mSendButton;
     private Button mClearButton;
     private AutoCompleteTextView mInputText;
     private EditText mOutputText;
     private String mFilePath;
+
+    private Thread mStreamingThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +85,54 @@ public class TerminalActivity extends AppCompatActivity {
                 setupAutoCompleteTextView();
             }
         });
+
+        mStreaming = findViewById(R.id.terminal_stream);
+        mStreaming.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(isChecked)
+                    startStreaming();
+                else
+                    stopStreaming();
+            }
+        });
         init();
+    }
+
+    private void stopStreaming() {
+        mStreamingThread.interrupt();
+        try {
+            mStreamingThread.join(1000);
+        } catch (InterruptedException e) {
+            Log.e(TAG, "stopStreaming, error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if(mStreaming.isChecked()){
+            stopStreaming();
+        }
+    }
+
+    private void startStreaming() {
+        mStreamingThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try(Pipeline pipe = new Pipeline()){
+                    pipe.start();
+                    while(!mStreamingThread.isInterrupted()){
+                        try(FrameSet frames = pipe.waitForFrames()){}
+                    }
+                    pipe.stop();
+                } catch (Exception e) {
+                    mOutputText.setText("streaming error: " + e.getMessage());
+                }
+            }
+        });
+        mStreamingThread.start();
     }
 
     private void send() {
