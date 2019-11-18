@@ -196,19 +196,6 @@ std::string hex_mode(JNIEnv *env, rs2_device * dev, const std::string& line)
     return rv.str();
 }
 
-extern "C"
-JNIEXPORT jstring JNICALL
-Java_com_intel_realsense_librealsense_DebugProtocol_nSendRawData(JNIEnv *env, jclass type,
-                                                                 jlong handle, jstring command_) {
-    const char *command = env->GetStringUTFChars(command_, 0);
-
-    const std::string &returnValue = hex_mode(env, reinterpret_cast<rs2_device *>(handle), command);
-
-    env->ReleaseStringUTFChars(command_, command);
-
-    return env->NewStringUTF(returnValue.c_str());
-}
-
 std::vector<uint8_t> build_raw_command_data(const command& command, const std::vector<std::string>& params)
 {
     if (params.size() > command.parameters.size() && !command.is_cmd_write_data)
@@ -343,55 +330,3 @@ Java_com_intel_realsense_librealsense_DebugProtocol_nGetCommands(JNIEnv *env, jc
 
     return(rv);
 }
-
-//extern "C"
-//JNIEXPORT jbyteArray JNICALL
-//Java_com_intel_realsense_librealsense_DebugProtocol_nSendAndReceiveData(JNIEnv *env, jclass clazz,
-//                                                                         jlong handle,
-//                                                                         jbyteArray buffer_,
-//                                                                         jstring command) {
-//    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
-//    jsize length = env->GetArrayLength(buffer_);
-//    std::vector<uint8_t> buff(reinterpret_cast<uint8_t*>(buffer), reinterpret_cast<uint8_t*>(buffer) + length);
-//
-//    const char *line = env->GetStringUTFChars(command, 0);
-//
-//    std::map<string, xml_parser_function> format_type_to_lambda;
-//    commands_xml cmd_xml;
-//
-//    parse_xml_from_memory(reinterpret_cast<const char *>(buff.data()), cmd_xml);
-//    env->ReleaseByteArrayElements(buffer_, buffer, 0);
-//
-//    update_format_type_to_lambda(format_type_to_lambda);
-//
-//    const std::string& result = xml_mode(line, cmd_xml, format_type_to_lambda, env, handle);
-//
-//    env->ReleaseStringUTFChars(command, line);
-//
-//    jbyteArray rv = env->NewByteArray(result.size());
-//    env->SetByteArrayRegion(rv, 0, result.size(),
-//                            reinterpret_cast<const jbyte *>(result.c_str()));
-//    return rv;
-//}
-//
-//
-//extern "C"
-//JNIEXPORT jobjectArray JNICALL
-//Java_com_intel_realsense_librealsense_DebugProtocol_nGetCommands(JNIEnv *env, jclass clazz,
-//                                                                 jbyteArray buffer_) {
-//    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
-//    jsize length = env->GetArrayLength(buffer_);
-//    std::vector<uint8_t> buff(reinterpret_cast<uint8_t*>(buffer), reinterpret_cast<uint8_t*>(buffer) + length);
-//
-//    commands_xml cmd_xml;
-//    parse_xml_from_memory(reinterpret_cast<const char *>(buff.data()), cmd_xml);
-//    env->ReleaseByteArrayElements(buffer_, buffer, 0);
-//
-//    jobjectArray rv;
-//    rv = (jobjectArray)env->NewObjectArray(cmd_xml.commands.size(), env->FindClass("java/lang/String"),env->NewStringUTF(""));
-//    int i = 0;
-//    for(auto&& c : cmd_xml.commands)
-//        env->SetObjectArrayElement(rv, i++, env->NewStringUTF(c.first.c_str()));
-//
-//    return(rv);
-//}

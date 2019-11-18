@@ -35,7 +35,6 @@ public class TerminalActivity extends AppCompatActivity {
     private AutoCompleteTextView mInputText;
     private EditText mOutputText;
     private String mFilePath;
-    private byte[] mFileData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,21 +82,6 @@ public class TerminalActivity extends AppCompatActivity {
         init();
     }
 
-//    private byte[] readFile(){
-//        File commandsFile = new File(mFilePath);
-//        int size = (int) commandsFile.length();
-//        byte[] bytes = new byte[size];
-//        try {
-//            BufferedInputStream buf = new BufferedInputStream(new FileInputStream(commandsFile));
-//            buf.read(bytes, 0, bytes.length);
-//            buf.close();
-//        } catch (Exception e) {
-//            Log.e(TAG, e.getMessage());
-//            mOutputText.setText("Error: " + e.getMessage());
-//        }
-//        return bytes;
-//    }
-
     private void send() {
         RsContext mRsContext = new RsContext();
         try(DeviceList devices = mRsContext.queryDevices()){
@@ -110,8 +94,6 @@ public class TerminalActivity extends AppCompatActivity {
             try(Device device = devices.createDevice(0)){
                 DebugProtocol dp = device.as(Extension.DEBUG);
                 String content = mInputText.getText().toString();
-//                if(mFileData == null)
-//                    mFileData = readFile();
                 String res = dp.SendAndReceiveRawData(mFilePath, content);
                 mOutputText.setText("command: " + mInputText.getText() + "\n\n" + res);
                 mInputText.setText("");
@@ -130,8 +112,6 @@ public class TerminalActivity extends AppCompatActivity {
     private void setupAutoCompleteTextView(){
         try{
             if(mAutoComplete.isChecked()) {
-//                if(mFileData == null)
-//                    mFileData = readFile();
                 String[] spArray = DebugProtocol.getCommands(mFilePath);
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                         android.R.layout.simple_dropdown_item_1line, spArray);

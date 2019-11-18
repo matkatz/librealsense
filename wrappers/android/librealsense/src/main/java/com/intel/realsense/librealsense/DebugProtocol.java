@@ -18,9 +18,7 @@ public class DebugProtocol extends Device {
     public byte[] SendAndReceiveRawData(byte[] buffer){
         return nSendAndReceiveRawData(mHandle, buffer);
     }
-
-//    private static native String[] nGetCommands(byte[] buffer);
-//    private static native byte[] nSendAndReceiveRawData(long handle, byte[] buffer);
+    
     private static native String[] nGetCommands(String filePath);
     private static native byte[] nSendAndReceiveData(long handle, String filePath, String command);
     private static native byte[] nSendAndReceiveRawData(long handle, byte[] buffer);
