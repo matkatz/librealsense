@@ -1,43 +1,41 @@
 package com.intel.realsense.camera;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.TextView;
+import android.widget.Switch;
 import android.widget.Toast;
 
-import com.intel.realsense.librealsense.CameraInfo;
 import com.intel.realsense.librealsense.DebugProtocol;
 import com.intel.realsense.librealsense.Device;
 import com.intel.realsense.librealsense.DeviceList;
 import com.intel.realsense.librealsense.Extension;
-import com.intel.realsense.librealsense.HWCommand;
 import com.intel.realsense.librealsense.RsContext;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class TerminalActivity extends AppCompatActivity {
 
     private static final String TAG = "librs camera terminal";
+    private static final int OPEN_FILE_REQUEST_CODE = 0;
+
+    private Switch mAutoComplete;
     private Button mSendButton;
     private Button mClearButton;
     private AutoCompleteTextView mInputText;
     private EditText mOutputText;
+    private String mFilePath;
+    private byte[] mFileData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,9 +69,35 @@ public class TerminalActivity extends AppCompatActivity {
             }
         });
         mOutputText = findViewById(R.id.terminal_output_edit_text);
-        setupAutoCompleteTextView();
+        mAutoComplete = findViewById(R.id.terminal_input_auto_complete);
+        mAutoComplete.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.putBoolean(getString(R.string.terminal_auto_complete), isChecked);
+                editor.commit();
+                setupAutoCompleteTextView();
+            }
+        });
+        init();
     }
-    
+
+//    private byte[] readFile(){
+//        File commandsFile = new File(mFilePath);
+//        int size = (int) commandsFile.length();
+//        byte[] bytes = new byte[size];
+//        try {
+//            BufferedInputStream buf = new BufferedInputStream(new FileInputStream(commandsFile));
+//            buf.read(bytes, 0, bytes.length);
+//            buf.close();
+//        } catch (Exception e) {
+//            Log.e(TAG, e.getMessage());
+//            mOutputText.setText("Error: " + e.getMessage());
+//        }
+//        return bytes;
+//    }
+
     private void send() {
         RsContext mRsContext = new RsContext();
         try(DeviceList devices = mRsContext.queryDevices()){
@@ -86,9 +110,11 @@ public class TerminalActivity extends AppCompatActivity {
             try(Device device = devices.createDevice(0)){
                 DebugProtocol dp = device.as(Extension.DEBUG);
                 String content = mInputText.getText().toString();
-
-                String res = dp.SendAndReceiveRawData(content);
-                mOutputText.setText(res);
+//                if(mFileData == null)
+//                    mFileData = readFile();
+                String res = dp.SendAndReceiveRawData(mFilePath, content);
+                mOutputText.setText("command: " + mInputText.getText() + "\n\n" + res);
+                mInputText.setText("");
             }
             catch(Exception e){
                 mOutputText.setText("Error: " + e.getMessage());
@@ -102,14 +128,54 @@ public class TerminalActivity extends AppCompatActivity {
     }
 
     private void setupAutoCompleteTextView(){
-        List<String> hwCommands = new ArrayList<>();
-        for(HWCommand hwc : HWCommand.values())
-            hwCommands.add(hwc.name());
-        String[] spArray = new String[hwCommands.size()];
-        hwCommands.toArray(spArray);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_dropdown_item_1line, spArray);
-        mInputText.setAdapter(adapter);
-//        mInputText.setThreshold(1);
+        try{
+            if(mAutoComplete.isChecked()) {
+//                if(mFileData == null)
+//                    mFileData = readFile();
+                String[] spArray = DebugProtocol.getCommands(mFilePath);
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                        android.R.layout.simple_dropdown_item_1line, spArray);
+                mInputText.setAdapter(adapter);
+            }else{
+                mInputText.setAdapter(null);
+            }
+        }catch(Exception e){
+            Log.e(TAG, e.getMessage());
+            mOutputText.setText("Error: " + e.getMessage());
+        }
+    }
+
+    private void init(){
+        SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
+        mFilePath = sharedPref.getString(getString(R.string.terminal_commands_file), "");
+        mAutoComplete.setChecked(sharedPref.getBoolean(getString(R.string.terminal_auto_complete), false));
+
+        if(mFilePath == null || !(new File(mFilePath).exists())){
+            Intent intent = new Intent(this, FileBrowserActivity.class);
+            intent.putExtra(getString(R.string.browse_folder), getString(R.string.realsense_folder) + File.separator + "hw");
+            startActivityForResult(intent, OPEN_FILE_REQUEST_CODE);
+        }
+        else
+            setupAutoCompleteTextView();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == OPEN_FILE_REQUEST_CODE && resultCode == RESULT_OK) {
+            if (data != null) {
+                mFilePath = data.getStringExtra(getString(R.string.intent_extra_file_path));
+                SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.putString(getString(R.string.terminal_commands_file), mFilePath);
+                editor.commit();
+                setupAutoCompleteTextView();
+            }
+        }
+        else{
+            Intent intent = new Intent();
+            setResult(RESULT_OK, intent);
+            finish();
+        }
     }
 }

@@ -10,5 +10,6 @@
     <string name="browse_folder">browse_folder</string>
     <string name="realsense_folder">realsense</string>
     <string name="show_3d">show_3d</string>
-    <string name="terminal_commands">terminal_commands</string>
+    <string name="terminal_commands_file">terminal_commands_file</string>
+    <string name="terminal_auto_complete">terminal_auto_complete</string>
 </resources>
