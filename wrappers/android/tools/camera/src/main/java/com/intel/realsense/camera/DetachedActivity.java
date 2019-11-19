@@ -23,6 +23,7 @@ import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.ProductLine;
 import com.intel.realsense.librealsense.RsContext;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -121,6 +122,12 @@ public class DetachedActivity extends AppCompatActivity {
                     if (!validateFwVersion(d))
                         return;
                     mDetached = false;
+                    SharedPreferences sharedPref = getSharedPreferences(getString(R.string.app_settings), Context.MODE_PRIVATE);
+                    boolean fw_logging_enabled = sharedPref.getBoolean(getString(R.string.fw_logging), false);
+                    String fw_logging_file_path = sharedPref.getString(getString(R.string.fw_logging_file_path), "");
+                    if(fw_logging_enabled && !fw_logging_file_path.equals("")){
+                        RsContext.startFwLogging(fw_logging_file_path);
+                    }
                     finish();
                     Intent intent = new Intent(this, PreviewActivity.class);
                     startActivity(intent);

@@ -15,6 +15,14 @@ public class RsContext extends LrsClass{
         return nGetVersion();
     }
 
+    public static void startFwLogging(String filePath) {
+        nStartReadingFwLogs(filePath);
+    }
+
+    public static void stopFwLogging() {
+        nStopReadingFwLogs();
+    }
+
     /**
      * @deprecated use {@link #queryDevices()} instead.
      */
@@ -57,4 +65,6 @@ public class RsContext extends LrsClass{
     private static native String nGetVersion();
     private static native long nQueryDevices(long handle, int mask);
     private static native void nDelete(long handle);
+    private static native void nStartReadingFwLogs(String filePath);
+    private static native void nStopReadingFwLogs();
 }
