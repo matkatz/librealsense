@@ -264,23 +264,19 @@ public class PreviewActivity extends AppCompatActivity {
                         continue;
                     switch(view.getId()) {
                         case R.id.radio_no_projector:{
-                            if(s.supports(Option.EMITTER_ENABLED))
-                                s.setValue(Option.EMITTER_ENABLED, 0);
+                            s.setValue(Option.EMITTER_ENABLED, 0);
                             break;
                         }
                         case R.id.radio_laser:{
-                            if(s.supports(Option.EMITTER_ENABLED))
-                                s.setValue(Option.EMITTER_ENABLED, 1);
+                            s.setValue(Option.EMITTER_ENABLED, 1);
                             break;
                         }
                         case R.id.radio_laser_auto:{
-                            if(s.supports(Option.EMITTER_ENABLED))
-                                s.setValue(Option.EMITTER_ENABLED, 2);
+                            s.setValue(Option.EMITTER_ENABLED, 2);
                             break;
                         }
                         case R.id.radio_led:{
-                            if(s.supports(Option.EMITTER_ENABLED))
-                                s.setValue(Option.EMITTER_ENABLED, 3);
+                            s.setValue(Option.EMITTER_ENABLED, 3);
                             break;
                         }
                     }
