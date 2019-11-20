@@ -279,6 +279,14 @@ public class PreviewActivity extends AppCompatActivity {
                             s.setValue(Option.EMITTER_ENABLED, 3);
                             break;
                         }
+                        case R.id.radio_custom:{
+                            s.setValue(Option.HARDWARE_PRESET, 0);
+                            break;
+                        }
+                        case R.id.radio_burst:{
+                            s.setValue(Option.HARDWARE_PRESET, 2);
+                            break;
+                        }
                     }
                 }
             } catch(Exception e){

@@ -11,7 +11,7 @@
         android:layout_height="match_parent">
 
         <TextView
-            android:id="@+id/controlsTitle"
+            android:id="@+id/controls_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Projector"
@@ -24,7 +24,7 @@
             android:id="@+id/controls_radio"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/controlsTitle"
+            android:layout_below="@id/controls_title"
             android:orientation="vertical">
             <RadioButton android:id="@+id/radio_no_projector"
                 android:layout_width="wrap_content"
@@ -56,8 +56,41 @@
                 android:onClick="onRadioButtonClicked"/>
         </RadioGroup>
 
+        <TextView
+            android:id="@+id/hw_preset_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hardware Preset"
+            android:textColor="#ffffff"
+            android:textSize="20dp"
+            android:textStyle="bold"
+            android:layout_marginBottom="40dp"
+            android:layout_below="@id/controls_radio"/>
+
+        <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/hw_preset_radio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/hw_preset_title"
+            android:orientation="vertical">
+            <RadioButton android:id="@+id/radio_custom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CUSTOM"
+                android:textColor="#ffffff"
+                android:textSize="14dp"
+                android:onClick="onRadioButtonClicked"/>
+            <RadioButton android:id="@+id/radio_burst"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#ffffff"
+                android:textSize="14dp"
+                android:text="BURST"
+                android:onClick="onRadioButtonClicked"/>
+        </RadioGroup>
+
         <Button android:id="@+id/controls_close_button"
-            android:layout_below="@id/controls_radio"
+            android:layout_below="@id/hw_preset_radio"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="14dp"
