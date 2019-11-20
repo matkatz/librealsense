@@ -3,6 +3,7 @@ package com.intel.realsense.camera;
 import com.intel.realsense.librealsense.Extension;
 import com.intel.realsense.librealsense.Frame;
 import com.intel.realsense.librealsense.FrameCallback;
+import com.intel.realsense.librealsense.FrameMetadata;
 import com.intel.realsense.librealsense.FrameSet;
 import com.intel.realsense.librealsense.StreamProfile;
 import com.intel.realsense.librealsense.VideoStreamProfile;
@@ -38,6 +39,7 @@ public class StreamingStats {
                     initStream(profile);
                 if (mLastFrames.get(f.getProfile().getUniqueId()) != f.getNumber()) {
                     mLastFrames.put(f.getProfile().getUniqueId(), f.getNumber());
+                    mStreamsMap.get(f.getProfile().getUniqueId()).updateMetadata("" + f.getMetadata(FrameMetadata.FRAME_EMITTER_MODE));
                     mStreamsMap.get(f.getProfile().getUniqueId()).onFrame();
                 }
                 else
@@ -66,6 +68,11 @@ public class StreamingStats {
         private long mFrameCount;
         private long mTotalFrameCount;
         private long mFirstFrameLatency;
+        private String mMetadata;
+
+        public void updateMetadata(String metadata){
+            mMetadata = metadata;
+        }
 
         public void reset(){
             mStartTime = mBaseTime = System.currentTimeMillis();
@@ -89,7 +96,8 @@ public class StreamingStats {
             return mName +
                     "\nFrame Rate: " + mFps +
                     "\nFrame Count: " + mTotalFrameCount +
-                    "\nRun Time: " + diffInSeconds + " [sec]";
+                    "\nRun Time: " + diffInSeconds + " [sec]" +
+                    "\nEmitter Mode: " + mMetadata;
         }
 
         public synchronized void kick(){
@@ -117,6 +125,4 @@ public class StreamingStats {
             }
         }
     }
-
-
 }
