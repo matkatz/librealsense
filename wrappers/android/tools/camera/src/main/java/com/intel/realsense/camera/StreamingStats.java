@@ -40,7 +40,9 @@ public class StreamingStats {
                 if (mLastFrames.get(f.getProfile().getUniqueId()) != f.getNumber()) {
                     mLastFrames.put(f.getProfile().getUniqueId(), f.getNumber());
                     if(f.supportsMetadata(FrameMetadata.FRAME_EMITTER_MODE))
-                        mStreamsMap.get(f.getProfile().getUniqueId()).updateMetadata("" + f.getMetadata(FrameMetadata.FRAME_EMITTER_MODE));
+                        mStreamsMap.get(f.getProfile().getUniqueId()).updateEmitterMetadata("" + f.getMetadata(FrameMetadata.FRAME_EMITTER_MODE));
+                    if(f.supportsMetadata(FrameMetadata.ACTUAL_EXPOSURE))
+                        mStreamsMap.get(f.getProfile().getUniqueId()).updateExposureMetadata("" + f.getMetadata(FrameMetadata.ACTUAL_EXPOSURE));
                     mStreamsMap.get(f.getProfile().getUniqueId()).onFrame();
                 }
                 else
@@ -69,10 +71,15 @@ public class StreamingStats {
         private long mFrameCount;
         private long mTotalFrameCount;
         private long mFirstFrameLatency;
-        private String mMetadata = "No data";
+        private String mEmitter = "No data";
+        private String mExposure = "No data";
 
-        public void updateMetadata(String metadata){
-            mMetadata = metadata;
+        public void updateEmitterMetadata(String metadata){
+            mEmitter = metadata;
+        }
+
+        public void updateExposureMetadata(String metadata){
+            mExposure = metadata;
         }
 
         public void reset(){
@@ -98,7 +105,8 @@ public class StreamingStats {
                     "\nFrame Rate: " + mFps +
                     "\nFrame Count: " + mTotalFrameCount +
                     "\nRun Time: " + diffInSeconds + " [sec]" +
-                    "\nEmitter Mode: " + mMetadata;
+                    "\nEmitter Mode: " + mEmitter +
+                    "\nExposure: " + mExposure;
         }
 
         public synchronized void kick(){

@@ -7,6 +7,7 @@ import android.app.DialogFragment;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 
@@ -32,6 +33,7 @@ public class ControlsDialog extends DialogFragment {
         builder.setView(fragmentView);
         AlertDialog rv = builder.create();
         rv.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        rv.getWindow().setGravity(Gravity.CENTER_HORIZONTAL | Gravity.TOP);
         return rv;
     }
 }
