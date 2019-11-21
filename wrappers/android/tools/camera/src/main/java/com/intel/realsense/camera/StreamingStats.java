@@ -39,7 +39,8 @@ public class StreamingStats {
                     initStream(profile);
                 if (mLastFrames.get(f.getProfile().getUniqueId()) != f.getNumber()) {
                     mLastFrames.put(f.getProfile().getUniqueId(), f.getNumber());
-                    mStreamsMap.get(f.getProfile().getUniqueId()).updateMetadata("" + f.getMetadata(FrameMetadata.FRAME_EMITTER_MODE));
+                    if(f.supportsMetadata(FrameMetadata.FRAME_EMITTER_MODE))
+                        mStreamsMap.get(f.getProfile().getUniqueId()).updateMetadata("" + f.getMetadata(FrameMetadata.FRAME_EMITTER_MODE));
                     mStreamsMap.get(f.getProfile().getUniqueId()).onFrame();
                 }
                 else
@@ -68,7 +69,7 @@ public class StreamingStats {
         private long mFrameCount;
         private long mTotalFrameCount;
         private long mFirstFrameLatency;
-        private String mMetadata;
+        private String mMetadata = "No data";
 
         public void updateMetadata(String metadata){
             mMetadata = metadata;
