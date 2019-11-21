@@ -18,14 +18,15 @@
             android:textColor="#ffffff"
             android:textSize="20dp"
             android:textStyle="bold"
-            android:layout_marginBottom="40dp"/>
+            android:layout_marginBottom="5dp"/>
 
         <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
             android:id="@+id/controls_radio"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/controls_title"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp">
             <RadioButton android:id="@+id/radio_no_projector"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -64,7 +65,7 @@
             android:textColor="#ffffff"
             android:textSize="20dp"
             android:textStyle="bold"
-            android:layout_marginBottom="40dp"
+            android:layout_marginBottom="5dp"
             android:layout_below="@id/controls_radio"/>
 
         <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
